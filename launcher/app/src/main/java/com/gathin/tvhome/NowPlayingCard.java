@@ -81,8 +81,8 @@ final class NowPlayingCard {
         done = card.findViewById(R.id.npDone);
         left = card.findViewById(R.id.npLeft);
 
-        // The weather widget's glass: the band's corners and edge line, with the cover blurred inside it.
-        float radius = 7 * density;   // a rounded rectangle: the band's 26dp would make a card this short a pill
+        // The weather widget's glass: the same corners and edge line, with the cover blurred inside it.
+        float radius = DockDecoration.CARD_RADIUS_DP * density;
         edge.setCornerRadius(radius);
         edge.setColor(0);
         edge.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);

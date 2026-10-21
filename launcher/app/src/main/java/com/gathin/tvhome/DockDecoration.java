@@ -21,6 +21,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     /** The band's room above and below its tiles, and its corner radius; the weather widget's glass uses the same. */
     static final float BAND_PAD_DP = 14;
     static final float BAND_RADIUS_DP = 26;
+    /** The corners of the weather widget and the now playing card: a rounded rectangle, not the band's pill. */
+    static final float CARD_RADIUS_DP = 7;
     /** The band's colour unless a theme sets dock_band_color, and its edge line. */
     static final int BAND_COLOR = 0xFF141416;
     static final int EDGE_COLOR = 0x1FFFFFFF;

@@ -378,7 +378,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         GradientDrawable panel = new GradientDrawable();
         panel.setColor(cfg.dockBandColor != 0 ? cfg.dockBandColor : DockDecoration.BAND_COLOR);
         panel.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);
-        panel.setCornerRadius(DockDecoration.BAND_RADIUS_DP * density);
+        panel.setCornerRadius(DockDecoration.CARD_RADIUS_DP * density);
         weatherWidget.setBackground(panel);
         if (cfg.nowPlaying) {
             nowPlaying = new NowPlayingCard(this, findViewById(R.id.nowPlaying), density,
