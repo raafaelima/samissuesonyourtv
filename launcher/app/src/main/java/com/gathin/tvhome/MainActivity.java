@@ -1831,12 +1831,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         View card = findViewById(R.id.nowPlaying);
         if (nowPlaying != null && card.getWidth() > 0) {
-            // Under the clock, on the band's left edge; the card keeps its own height and may hang below the weather widget.
-            Rect c = new Rect();
-            c.set(0, 0, clockBlock.getWidth(), clockBlock.getHeight());
-            root.offsetDescendantRectToMyCoords(clockBlock, c);
-            float top = c.bottom - 4 * density;   // the clock's line box has spare room under its digits
-            card.setTranslationX(bandLeft - card.getLeft());
+            // Under the weather widget, on the band's right edge; with no widget it takes the widget's place.
+            boolean weatherUp = weatherWidget != null && weatherWidget.getVisibility() == View.VISIBLE;
+            float top = weatherUp ? weatherWidget.getBottom() + 14 * density : card.getTop();
+            card.setTranslationX(bandRight - card.getRight());
             card.setTranslationY(top - card.getTop());
         }
     }

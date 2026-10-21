@@ -141,7 +141,7 @@ final class Config {
     final boolean longPressReorder;
     /** The date above a larger clock, no greeting or divider (config.xml stacked_clock). */
     final boolean stackedClock;
-    /** The card under the clock while Spotify plays (config.xml now_playing). */
+    /** The card under the weather widget while Spotify plays (config.xml now_playing). */
     final boolean nowPlaying;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,

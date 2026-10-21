@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * config.xml now_playing: fills the card under the clock from Spotify's media session. Once a song has played the card
+ * config.xml now_playing: fills the card under the weather widget from Spotify's media session. Once a song has played the card
  * stays, paused or with Spotify closed, showing the last song so one press gets back to it; the song is kept across
  * restarts of Home. It never appears before something has played. Needs notification access for NowPlayingListener
  * (the README gives the one adb command). Nothing leaves the TV except the cover, when Spotify names it by https address.
