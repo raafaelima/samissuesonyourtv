@@ -82,7 +82,7 @@ final class NowPlayingCard {
         left = card.findViewById(R.id.npLeft);
 
         // The weather widget's glass: the band's corners and edge line, with the cover blurred inside it.
-        float radius = DockDecoration.BAND_RADIUS_DP * density;
+        float radius = 7 * density;   // a rounded rectangle: the band's 26dp would make a card this short a pill
         edge.setCornerRadius(radius);
         edge.setColor(0);
         edge.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);
@@ -94,7 +94,7 @@ final class NowPlayingCard {
                 outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
             }
         });
-        float cornerCover = 8 * density;
+        float cornerCover = 5 * density;
         cover.setClipToOutline(true);
         cover.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View view, Outline outline) {
