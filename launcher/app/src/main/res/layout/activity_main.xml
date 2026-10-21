@@ -458,7 +458,7 @@
          MainActivity lines it up with the dock band. Pressing OK opens the app. Gone unless something plays. -->
     <FrameLayout
         android:id="@+id/nowPlaying"
-        android:layout_width="243dp"
+        android:layout_width="219dp"
         android:layout_height="54dp"
         android:layout_gravity="top|start"
         android:focusable="true"
