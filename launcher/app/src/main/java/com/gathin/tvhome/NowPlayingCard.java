@@ -255,8 +255,8 @@ final class NowPlayingCard {
         int[] px = new int[w * h];
         small.getPixels(px, 0, w, 0, 0, w, h);
         for (int pass = 0; pass < 2; pass++) {
-            px = box(px, w, h, 5, true);
-            px = box(px, w, h, 5, false);
+            px = box(px, w, h, 2, true);
+            px = box(px, w, h, 2, false);
         }
         return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888);
     }
