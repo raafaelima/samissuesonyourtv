@@ -12,7 +12,7 @@ All of it is opt-in through settings, in `launcher/app/src/main/res/values/confi
 `config.json` (keys in [`themes/README.md`](themes/README.md)). The fork's theme,
 [`themes/recife`](themes/recife), turns the look on.
 
-![The home screen with the fork's recife theme: stacked clock, weather widget, translucent dock over the Rua do Bom Jesus wallpaper](docs/samissues-home.jpg)
+![The home screen with the fork's recife theme: stacked clock, the now playing card, weather widget and dark glass dock over the Rua do Bom Jesus wallpaper](docs/samissues-home.jpg)
 
 | Feature | Setting | What it does |
 |---|---|---|
