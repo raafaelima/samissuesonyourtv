@@ -10,5 +10,6 @@
   "wallpaper": true,
   "wallpaper_dim": 35,
   "wallpaper_rotation_minutes": 5,
-  "wallpaper_order": "sequential"
+  "wallpaper_order": "sequential",
+  "now_playing": true
 }

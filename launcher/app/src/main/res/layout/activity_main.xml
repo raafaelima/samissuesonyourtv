@@ -453,6 +453,110 @@
             android:orientation="horizontal" />
     </LinearLayout>
 
+    <!-- Now playing card under the clock (config.xml now_playing): the cover, the song, the artist and the progress,
+         only while Spotify plays. Floats over the Home column, so it moves nothing; NowPlayingCard fills it and
+         MainActivity lines it up with the dock band. Pressing OK opens the app. Gone unless something plays. -->
+    <FrameLayout
+        android:id="@+id/nowPlaying"
+        android:layout_width="288dp"
+        android:layout_height="68dp"
+        android:layout_gravity="top|start"
+        android:focusable="true"
+        android:clickable="true"
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/npBackdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#A6000000" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="18dp">
+            <ImageView
+                android:id="@+id/npCover"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/npTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="12.96sp"
+                    android:fontFamily="@font/outfit_medium" />
+                <TextView
+                    android:id="@+id/npArtist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textColor="#D9FFFFFF"
+                    android:textSize="9.72sp"
+                    android:fontFamily="@font/outfit_medium" />
+                <LinearLayout
+                    android:id="@+id/npProgress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:id="@+id/npElapsed"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#D9FFFFFF"
+                        android:textSize="8.1sp"
+                        android:fontFamily="@font/outfit_medium" />
+                    <LinearLayout
+                        android:id="@+id/npBar"
+                        android:layout_width="0dp"
+                        android:layout_height="2.43dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp"
+                        android:orientation="horizontal">
+                        <View
+                            android:id="@+id/npDone"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:background="#FFFFFFFF" />
+                        <View
+                            android:id="@+id/npLeft"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:background="#40FFFFFF" />
+                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/npTotal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#D9FFFFFF"
+                        android:textSize="8.1sp"
+                        android:fontFamily="@font/outfit_medium" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
     <!-- The single floating glass highlight that springs between tiles. -->
     <com.gathin.tvhome.GlassView
         android:id="@+id/glass"

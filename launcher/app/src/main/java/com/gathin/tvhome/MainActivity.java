@@ -380,6 +380,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         panel.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);
         panel.setCornerRadius(DockDecoration.BAND_RADIUS_DP * density);
         weatherWidget.setBackground(panel);
+        if (cfg.nowPlaying) {
+            nowPlaying = new NowPlayingCard(this, findViewById(R.id.nowPlaying), density,
+                    cfg.dockBandColor != 0 ? cfg.dockBandColor : DockDecoration.BAND_COLOR, this::alignToBand);
+            // Down returns to the dock tile Up came from; the other arrows stay on the card.
+            findViewById(R.id.nowPlaying).setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) focusTile(lastFocused % COLUMNS);
+                return keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP
+                        || keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT;
+            });
+        }
         weatherOn = cfg.weather;
         weatherLat = cfg.weatherLatitude;
         weatherLon = cfg.weatherLongitude;
@@ -691,6 +702,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         restartIdleClock();
+        if (nowPlaying != null) nowPlaying.start();
         promptsPaused = false;
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         if (rebuildOnResume) {
@@ -837,6 +849,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         handler.removeCallbacks(minuteTick);
         stopStats();
         stopWeather();
+        if (nowPlaying != null) nowPlaying.stop();
         if (diya != null) diya.stop();
         cancelPendingFocusScroll();
         // Nothing of ours stays on screen over another app; an undecided prompt simply returns next time.
@@ -1668,6 +1681,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** The widget in the top-right corner; its views are found when the first forecast arrives. */
     private View weatherWidget;
+    private NowPlayingCard nowPlaying;
     private boolean weatherOn;
     private double weatherLat, weatherLon;
     private String weatherPlace;
@@ -1814,6 +1828,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         clockBlock.setTranslationX(bandLeft - r.left);
         if (weatherWidget != null && weatherWidget.getWidth() > 0) {
             weatherWidget.setTranslationX(bandRight - weatherWidget.getRight());
+        }
+        View card = findViewById(R.id.nowPlaying);
+        if (nowPlaying != null && card.getWidth() > 0) {
+            // Under the clock, on the band's left edge; the card keeps its own height and may hang below the weather widget.
+            Rect c = new Rect();
+            c.set(0, 0, clockBlock.getWidth(), clockBlock.getHeight());
+            root.offsetDescendantRectToMyCoords(clockBlock, c);
+            float top = c.bottom - 4 * density;   // the clock's line box has spare room under its digits
+            card.setTranslationX(bandLeft - card.getLeft());
+            card.setTranslationY(top - card.getTop());
         }
     }
 
@@ -2044,7 +2068,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return !topButtons;    // dock row: let focus move to the top bar, if it has buttons
+            if (position < COLUMNS) {
+                View card = findViewById(R.id.nowPlaying);
+                if (!topButtons && card.getVisibility() == View.VISIBLE) {   // the now playing card, when it is up
+                    hideGlass();
+                    hideHero();
+                    card.requestFocus();
+                    return true;
+                }
+                return !topButtons;    // dock row: let focus move to the top bar, if it has buttons
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;

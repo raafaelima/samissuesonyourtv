@@ -77,6 +77,7 @@ is ignored, and a file that doesn't parse is ignored as a whole, so a theme can 
 | `top_buttons` | bool | `false` hides the top bar's buttons (Inputs, network, Settings) when the remote's own keys do the same; Up from the dock then stays put. `true` by default |
 | `long_press_reorder` | bool | Hold OK on a tile to pick it up and move it with the arrows, as on iOS; OK or Back puts it down, Back again finishes. Off, holding OK opens the app's info page. `false` by default |
 | `stacked_clock` | bool | The date on its own line above a larger clock, with no greeting and no divider, so the clock block balances the weather widget. `false` by default |
+| `now_playing` | bool | A card under the clock with the cover, song, artist and progress; once Spotify has played it stays with the last song, and OK on it opens the app. Needs notification access for `NowPlayingListener` (README). Default `false` |
 | `weather` | bool | Weather widget in the top-right corner: now, today's high and low and the next six hours, from Open-Meteo (free, no key). Sends only the place's coordinates, rounded, over HTTPS every 30 minutes while Home is on screen; needs `weather_latitude` and `weather_longitude`. `false` by default |
 | `weather_latitude`, `weather_longitude` | decimal degrees, as text | Where the weather is for (Lisbon: `"38.72"`, `"-9.14"`) |
 | `weather_place` | text | The place's name at the top of the weather widget; empty leaves it out |

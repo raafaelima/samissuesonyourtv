@@ -141,6 +141,8 @@ final class Config {
     final boolean longPressReorder;
     /** The date above a larger clock, no greeting or divider (config.xml stacked_clock). */
     final boolean stackedClock;
+    /** The card under the clock while Spotify plays (config.xml now_playing). */
+    final boolean nowPlaying;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
                    String liveTvAction, Map<String, String> launchActions, Map<String, String> appLabels,
@@ -154,7 +156,7 @@ final class Config {
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, int homeIdleClockMinutes,
                    int dockBandColor, boolean topButtons, boolean weather, double weatherLatitude,
                    double weatherLongitude, String weatherPlace,
-                   boolean longPressReorder, boolean stackedClock) {
+                   boolean longPressReorder, boolean stackedClock, boolean nowPlaying) {
         this.inputKeycodes = inputKeycodes;
         this.appKeys = Collections.unmodifiableList(appKeys);
         this.dockApps = Collections.unmodifiableList(dockApps);
@@ -213,6 +215,7 @@ final class Config {
         this.weatherPlace = weatherPlace;
         this.longPressReorder = longPressReorder;
         this.stackedClock = stackedClock;
+        this.nowPlaying = nowPlaying;
     }
 
     /** The folder the theme tools push into; null when external storage is unavailable. */
@@ -271,6 +274,7 @@ final class Config {
         String weatherPlace = res.getString(R.string.weather_place);
         boolean longPressReorder = res.getBoolean(R.bool.long_press_reorder);
         boolean stackedClock = res.getBoolean(R.bool.stacked_clock);
+        boolean nowPlaying = res.getBoolean(R.bool.now_playing);
         boolean applied = false;
 
         File dir = dir(ctx);
@@ -328,6 +332,7 @@ final class Config {
             weatherPlace = string(json, "weather_place", weatherPlace);
             longPressReorder = bool(json, "long_press_reorder", longPressReorder);
             stackedClock = bool(json, "stacked_clock", stackedClock);
+            nowPlaying = bool(json, "now_playing", nowPlaying);
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
@@ -389,7 +394,7 @@ final class Config {
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow,
                 Math.max(0, idleClockMinutes), bandColor, topButtons, weather, Weather.coordinate(weatherLat, 90),
                 Weather.coordinate(weatherLon, 180), weatherPlace.trim(), longPressReorder,
-                stackedClock);
+                stackedClock, nowPlaying);
     }
 
     /**
