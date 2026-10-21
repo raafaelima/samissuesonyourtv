@@ -1672,7 +1672,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         date.setLetterSpacing(0.02f);
         date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         date.setTextColor(0xD9FFFFFF);
-        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 72);
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 88);
         clock.setTypeface(getResources().getFont(R.font.outfit_medium));
         clock.setLetterSpacing(-0.02f);
     }
