@@ -1,27 +1,66 @@
-<p align="center">
-  <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
-</p>
+# samissuesonyourtv
 
-<p align="center">
-  <a href="https://github.com/Gathin23/cleanyourtv/stargazers"><img src="https://img.shields.io/github/stars/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Stars"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/pulls?q=is%3Amerged"><img src="https://img.shields.io/github/issues-pr-closed/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&label=merged%20PRs&color=cfffcf&labelColor=15181e" alt="Merged PRs"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/network/members"><img src="https://img.shields.io/github/forks/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Forks"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://img.shields.io/github/contributors/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Contributors"></a>
-  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-cfffcf?style=flat&labelColor=15181e" alt="简体中文"></a>
-  <a href="https://buymeacoffee.com/gathint"><img src="https://img.shields.io/badge/support-%E2%9D%A4-ff5e8a?style=flat&labelColor=15181e" alt="Support, buy me a coffee"></a>
-  <a href="https://www.producthunt.com/products/cleanyourtv"><img src="https://img.shields.io/badge/Product%20Hunt-live%20now-da552f?style=flat&logo=producthunt&logoColor=white&labelColor=15181e" alt="CleanYourTV on Product Hunt"></a>
-</p>
+A personal fork of [CleanYourTV](https://github.com/Gathin23/cleanyourtv) by Gathin: the same debloat tools
+and reference launcher, with a home screen redesigned in the style of tvOS. It runs on any Android TV or
+Google TV the original supports.
 
-<p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="158 TV models · 52 brands · 24 languages · 429 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 63 more: 79 articles from 22 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
-</p>
+**Version 1.1** (`personal` branch, tag `v1.1`).
 
-> Vibe coded my parents' TV this afternoon! It was showing a sponsored ad before you could even get
-> to Netflix. Gave Claude Code the model number, it found the TV on wifi, removed 25 Xiaomi packages
-> and wrote a new launcher. Looks like an Apple TV now lol.
->
-> [@gathint, 17 October 2026](https://x.com/gathint/status/2111379569030939102). The replies are where
-> most of the TV lists here came from. The repo was called tv-vibehack until the 19th; old links work.
+## What's different from the original
+
+All of it is opt-in through settings, in `launcher/app/src/main/res/values/config.xml` or a theme's
+`config.json` (keys in [`themes/README.md`](themes/README.md)). The fork's theme,
+[`themes/recife`](themes/recife), turns the look on.
+
+| Feature | Setting | What it does |
+|---|---|---|
+| Weather widget | `weather`, `weather_latitude`, `weather_longitude`, `weather_place` | A glass card in the top-right corner, in the style of the macOS widget: place, temperature, sky, today's high and low, and the next six hours. Data from [Open-Meteo](https://open-meteo.com) (free, no key, no account) |
+| Stacked clock | `stacked_clock` | The date on its own line above a larger clock, no greeting or divider, balanced with the weather widget |
+| Hold OK to reorder | `long_press_reorder` | Hold OK on an app to pick it up, move it with the arrows, OK or Back to drop it, Back again to finish. As on iOS |
+| No top bar | `top_buttons` | Hides the Inputs, network and Settings buttons, for remotes that have their own Input and Settings keys |
+| Translucent dock | `dock_band_color` | The dock band's colour and transparency (`#AARRGGBB`) |
+| One margin | (always on) | The clock, the weather widget and the dock band line up on the same edges, and the widget uses the dock's glass, corners and padding |
+| Room for the highlight | (always on) | The dock's first and last apps keep space around their focus highlight, at any column count |
+
+Also fixed: `tools/theme.sh` left the remote's key services (YouTube, Input, Settings buttons) switched off after
+a theme push on some Android 11 TVs; sent upstream as
+[CleanYourTV #726](https://github.com/Gathin23/cleanyourtv/pull/726).
+
+## Installing
+
+Follow the original **Quick start** below to debloat the TV and install the launcher, from this repository
+instead of the original. Then:
+
+```bash
+# the launcher, with the remote's key services
+TV_HOST=<tv ip> INPUT_KEY_SERVICE=1 HOME_KEY_SERVICE=1 launcher/build-and-install.sh
+# the fork's look
+TV_HOST=<tv ip> tools/theme.sh themes/recife
+```
+
+What you get is the same layout, features and wallpaper. Three things are yours to set, because they depend on
+your TV and where you live:
+
+- **Weather** stays off until you add your city to `themes/recife/config.json`:
+  `"weather": true, "weather_latitude": "38.72", "weather_longitude": "-9.14", "weather_place": "Lisbon"`.
+  With it on, the launcher sends only those coordinates (rounded to about 1 km) to Open-Meteo over HTTPS,
+  every 30 minutes while Home is on screen. Off, it opens no connection.
+- **Your apps**: which ones sit in the dock (`dock_apps`) and which are hidden (`hidden_apps`).
+- **Your remote**: buttons that stop working once the stock launcher is off. Map them with `app_keys`, for
+  example `190:com.google.android.youtube.tv` for a YouTube button (see the original's troubleshooting notes).
+
+Push the theme again after any change. Your own wallpapers go in the theme's `wallpapers/` folder; with more
+than one, set `wallpaper_rotation_minutes`.
+
+## Credits
+
+The debloat tools, the reference launcher and the documentation below are
+[CleanYourTV](https://github.com/Gathin23/cleanyourtv) by Gathin and its contributors, under the MIT licence.
+Wallpaper credits are in [`themes/recife/CREDITS.md`](themes/recife/CREDITS.md).
+
+---
+
+# The original CleanYourTV README
 
 ## How it works
 
