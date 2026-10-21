@@ -8,5 +8,7 @@
   "dock_band_color": "#33FFFFFF",
   "ambient_glow": false,
   "wallpaper": true,
-  "wallpaper_dim": 35
+  "wallpaper_dim": 35,
+  "wallpaper_rotation_minutes": 5,
+  "wallpaper_order": "sequential"
 }
