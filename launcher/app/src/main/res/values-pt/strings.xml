@@ -103,4 +103,14 @@
     <string name="race_live">%1$s · ao vivo</string>
     <string name="race_finished">Bandeira quadriculada</string>
     <string name="last_opened">Aberto %1$s</string>
+    <!-- Weather lines under the clock (Weather). -->
+    <string name="weather_clear">Céu limpo</string>
+    <string name="weather_partly">Parcialmente nublado</string>
+    <string name="weather_cloudy">Nublado</string>
+    <string name="weather_fog">Nevoeiro</string>
+    <string name="weather_drizzle">Chuvisco</string>
+    <string name="weather_rain">Chuva</string>
+    <string name="weather_snow">Neve</string>
+    <string name="weather_storm">Trovoada</string>
+    <string name="weather_high_low">Máx.: %1$s Mín.: %2$s</string>
 </resources>

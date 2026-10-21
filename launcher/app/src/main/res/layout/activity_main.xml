@@ -367,6 +367,92 @@
         </FrameLayout>
     </LinearLayout>
 
+    <!-- Weather widget in the top-right corner (config.xml weather): the place and temperature now, the sky and
+         today's high and low, and the next hours. Floats over the Home column, so it moves nothing. Its glass is
+         the dock band's, set where MainActivity finds the widget. Gone unless
+         it is on. -->
+    <LinearLayout
+        android:id="@+id/weatherWidget"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="26dp"
+        android:layout_marginEnd="56dp"
+        android:minWidth="243dp"
+        android:paddingStart="12.96dp"
+        android:paddingEnd="12.96dp"
+        android:paddingTop="11.34dp"
+        android:paddingBottom="9.72dp"
+        android:orientation="vertical"
+        android:importantForAccessibility="no"
+        android:visibility="gone">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/weatherPlace"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textColor="#D9FFFFFF"
+                    android:textSize="9.72sp"
+                    android:fontFamily="@font/outfit_medium" />
+                <TextView
+                    android:id="@+id/weatherTemp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="28.35sp"
+                    android:fontFamily="@font/outfit_medium"
+                    android:includeFontPadding="false" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="11.34dp"
+                android:gravity="end"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/weatherGlyph"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="12.96sp" />
+                <TextView
+                    android:id="@+id/weatherSky"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1.62dp"
+                    android:singleLine="true"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="9.72sp"
+                    android:fontFamily="@font/outfit_medium" />
+                <TextView
+                    android:id="@+id/weatherHighLow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="9.72sp"
+                    android:fontFamily="@font/outfit_medium" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- The next hours: one column each, filled from code (MainActivity.showWeather). -->
+        <LinearLayout
+            android:id="@+id/weatherHours"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4.86dp"
+            android:orientation="horizontal" />
+    </LinearLayout>
+
     <!-- The single floating glass highlight that springs between tiles. -->
     <com.gathin.tvhome.GlassView
         android:id="@+id/glass"

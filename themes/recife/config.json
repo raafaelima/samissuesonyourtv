@@ -1,0 +1,12 @@
+{
+  "columns": 5,
+  "rows_below_dock": 0,
+  "dock_title": false,
+  "top_buttons": false,
+  "stacked_clock": true,
+  "long_press_reorder": true,
+  "dock_band_color": "#33FFFFFF",
+  "ambient_glow": false,
+  "wallpaper": true,
+  "wallpaper_dim": 35
+}

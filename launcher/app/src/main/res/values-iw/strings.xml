@@ -103,4 +103,14 @@
     <string name="race_live">%1$s · בשידור חי</string>
     <string name="race_finished">הדגל המשובץ</string>
     <string name="last_opened">נפתח לאחרונה %1$s</string>
+    <!-- Weather lines under the clock (Weather). -->
+    <string name="weather_clear">בהיר</string>
+    <string name="weather_partly">מעונן חלקית</string>
+    <string name="weather_cloudy">מעונן</string>
+    <string name="weather_fog">ערפל</string>
+    <string name="weather_drizzle">טפטוף</string>
+    <string name="weather_rain">גשם</string>
+    <string name="weather_snow">שלג</string>
+    <string name="weather_storm">סופת רעמים</string>
+    <string name="weather_high_low">גבוה: %1$s נמוך: %2$s</string>
 </resources>

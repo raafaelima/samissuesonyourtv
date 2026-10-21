@@ -128,6 +128,19 @@ final class Config {
     final boolean ambientGlow;
     /** Minutes Home may sit untouched before the clock screensaver (config.xml, home_idle_clock_minutes); 0 is off. */
     final int homeIdleClockMinutes;
+    /** The dock band's colour with its alpha (theme config.json, dock_band_color); 0 keeps the built-in one. */
+    final int dockBandColor;
+    /** The top bar's buttons (config.xml, top_buttons); false leaves the remote's own keys for Inputs and Settings. */
+    final boolean topButtons;
+    /** Weather lines under the clock (config.xml weather); on only with a place's coordinates. */
+    final boolean weather;
+    final double weatherLatitude, weatherLongitude;
+    /** The place's name on the weather line (config.xml weather_place); empty leaves it out. */
+    final String weatherPlace;
+    /** Hold OK on a tile to pick it up and move it, as on iOS (config.xml long_press_reorder); off opens app info. */
+    final boolean longPressReorder;
+    /** The date above a larger clock, no greeting or divider (config.xml stacked_clock). */
+    final boolean stackedClock;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
                    String liveTvAction, Map<String, String> launchActions, Map<String, String> appLabels,
@@ -138,7 +151,10 @@ final class Config {
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
-                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, int homeIdleClockMinutes) {
+                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, int homeIdleClockMinutes,
+                   int dockBandColor, boolean topButtons, boolean weather, double weatherLatitude,
+                   double weatherLongitude, String weatherPlace,
+                   boolean longPressReorder, boolean stackedClock) {
         this.inputKeycodes = inputKeycodes;
         this.appKeys = Collections.unmodifiableList(appKeys);
         this.dockApps = Collections.unmodifiableList(dockApps);
@@ -189,6 +205,14 @@ final class Config {
         this.cinematicHome = cinematicHome;
         this.ambientGlow = ambientGlow;
         this.homeIdleClockMinutes = homeIdleClockMinutes;
+        this.dockBandColor = dockBandColor;
+        this.topButtons = topButtons;
+        this.weatherLatitude = weatherLatitude;
+        this.weatherLongitude = weatherLongitude;
+        this.weather = weather && !Double.isNaN(weatherLatitude) && !Double.isNaN(weatherLongitude);
+        this.weatherPlace = weatherPlace;
+        this.longPressReorder = longPressReorder;
+        this.stackedClock = stackedClock;
     }
 
     /** The folder the theme tools push into; null when external storage is unavailable. */
@@ -239,6 +263,14 @@ final class Config {
         boolean cinematic = res.getBoolean(R.bool.cinematic_home);
         boolean ambientGlow = res.getBoolean(R.bool.ambient_glow);
         int idleClockMinutes = res.getInteger(R.integer.home_idle_clock_minutes);
+        int bandColor = 0;
+        boolean topButtons = res.getBoolean(R.bool.top_buttons);
+        boolean weather = res.getBoolean(R.bool.weather);
+        String weatherLat = res.getString(R.string.weather_latitude);
+        String weatherLon = res.getString(R.string.weather_longitude);
+        String weatherPlace = res.getString(R.string.weather_place);
+        boolean longPressReorder = res.getBoolean(R.bool.long_press_reorder);
+        boolean stackedClock = res.getBoolean(R.bool.stacked_clock);
         boolean applied = false;
 
         File dir = dir(ctx);
@@ -288,6 +320,14 @@ final class Config {
             cinematic = bool(json, "cinematic_home", cinematic);
             ambientGlow = bool(json, "ambient_glow", ambientGlow);
             idleClockMinutes = integer(json, "home_idle_clock_minutes", idleClockMinutes, 0, 1440);
+            bandColor = translucentColor(json, "dock_band_color", bandColor);
+            topButtons = bool(json, "top_buttons", topButtons);
+            weather = bool(json, "weather", weather);
+            weatherLat = string(json, "weather_latitude", weatherLat);
+            weatherLon = string(json, "weather_longitude", weatherLon);
+            weatherPlace = string(json, "weather_place", weatherPlace);
+            longPressReorder = bool(json, "long_press_reorder", longPressReorder);
+            stackedClock = bool(json, "stacked_clock", stackedClock);
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
@@ -347,7 +387,9 @@ final class Config {
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, wallpaperOrder, applied,
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow,
-                Math.max(0, idleClockMinutes));
+                Math.max(0, idleClockMinutes), bandColor, topButtons, weather, Weather.coordinate(weatherLat, 90),
+                Weather.coordinate(weatherLon, 180), weatherPlace.trim(), longPressReorder,
+                stackedClock);
     }
 
     /**
@@ -478,6 +520,17 @@ final class Config {
         try {
             int c = Color.parseColor(((String) v).trim());
             return c | 0xFF000000;   // always opaque: the window behind is black anyway
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
+    /** Like color, but keeps the alpha of a #AARRGGBB value: the band can let the glow show through. */
+    private static int translucentColor(JSONObject o, String key, int fallback) {
+        Object v = o.opt(key);
+        if (!(v instanceof String)) return fallback;
+        try {
+            return Color.parseColor(((String) v).trim());
         } catch (IllegalArgumentException e) {
             return fallback;
         }

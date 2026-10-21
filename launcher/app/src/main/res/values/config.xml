@@ -114,9 +114,27 @@
     <!-- A reorder button (two arrows) in the top bar. Off by default: reordering is also in the Settings
          button's long-press menu, so it needs no extra button on screen. -->
     <bool name="reorder_button">false</bool>
+    <!-- Hold OK on a tile to pick it up and move it with the arrows, as on iOS; OK or Back puts it down and Back
+         again finishes. Off, holding OK opens the app's info page. Can also be set with "long_press_reorder": true
+         in a theme's config.json. -->
+    <bool name="long_press_reorder">false</bool>
+    <!-- The date on its own line above a larger clock, with no greeting and no divider, so the clock block
+         balances the weather widget. Can also be set with "stacked_clock": true in a theme's config.json. -->
+    <bool name="stacked_clock">false</bool>
     <!-- Wi-Fi and Settings as round icon-only buttons (the network name moves to the talkback description);
          Inputs keeps its label. -->
     <bool name="icon_only_buttons">false</bool>
+    <!-- false hides the top bar's buttons (Inputs, network, Settings) for remotes whose own keys do the same; Up
+         from the dock then stays put. Can also be set with "top_buttons": false in a theme's config.json. -->
+    <bool name="top_buttons">true</bool>
+    <!-- Weather widget in the top-right corner: now, today's high and low and the next six hours, from Open-Meteo (free, no key or account). Off by
+         default: on, Home sends the place's coordinates (rounded to about 1 km) over HTTPS every 30 minutes while
+         it is on screen, and nothing else. Needs weather_latitude and weather_longitude in decimal degrees (Lisbon:
+         38.72 and -9.14); weather_place is the name shown. All four can also be set in a theme's config.json. -->
+    <bool name="weather">false</bool>
+    <string name="weather_latitude" translatable="false"></string>
+    <string name="weather_longitude" translatable="false"></string>
+    <string name="weather_place" translatable="false"></string>
     <!-- The app library as a round button in the top bar, beside Settings (app_library must be on too). -->
     <bool name="library_button">false</bool>
     <!-- With icon_only_buttons: keep the network name on the Wi-Fi pill up to this width in dp, cut with an ellipsis.

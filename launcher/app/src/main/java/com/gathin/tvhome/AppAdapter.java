@@ -57,6 +57,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         void onLibraryRequested();
         void onLibraryFocused();
         void onLibraryUp();
+
+        /** Hold OK on a tile. Return true when handled; false opens the app's info page as before. */
+        boolean onTileLongPressed(int position);
     }
 
     static final class Entry {
@@ -437,6 +440,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         h.card.setOnClickListener(v -> launch(e));
         h.card.setOnLongClickListener(v -> {
+            int pos = h.getBindingAdapterPosition();
+            if (pos != RecyclerView.NO_POSITION && listener.onTileLongPressed(pos)) return true;
             Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + e.pkg));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try {

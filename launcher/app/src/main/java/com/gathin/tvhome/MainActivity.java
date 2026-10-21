@@ -61,6 +61,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.Space;
+import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -72,8 +74,17 @@ import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -215,6 +226,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean reordering;
     /** Key of the tile being carried in reorder mode, or null. */
     private String movingKey;
+    /** config.xml long_press_reorder: holding OK on a tile picks it up. */
+    private boolean longPressReorder;
+    /** The OK release that ends that hold must not put the tile straight back down. */
+    private boolean swallowOkRelease;
     /** Tile order when reorder mode started, to save only when something moved. */
     private List<String> orderAtStart;
     private View btnReorder;
@@ -312,6 +327,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         advancedEffects = cfg.animations && cfg.advancedEffects;
         reducedMotion = cfg.reducedMotion;
         dockRow = cfg.dockRow;
+        longPressReorder = cfg.longPressReorder;
         festival = cfg.festival;
         festive = festival.active(LocalDate.now());
         liveTvPkg = cfg.liveTvPackage;
@@ -357,6 +373,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnWifi = findViewById(R.id.btnWifi);
         shamsiDate = findViewById(R.id.shamsiDate);
         stats = findViewById(R.id.stats);
+        weatherWidget = findViewById(R.id.weatherWidget);
+        // The widget's glass is the dock band's: its colour (dock_band_color), edge line and corners.
+        GradientDrawable panel = new GradientDrawable();
+        panel.setColor(cfg.dockBandColor != 0 ? cfg.dockBandColor : DockDecoration.BAND_COLOR);
+        panel.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);
+        panel.setCornerRadius(DockDecoration.BAND_RADIUS_DP * density);
+        weatherWidget.setBackground(panel);
+        weatherOn = cfg.weather;
+        weatherLat = cfg.weatherLatitude;
+        weatherLon = cfg.weatherLongitude;
+        weatherPlace = cfg.weatherPlace;
         raceCalendar = cfg.raceCalendar;
         racePanel = findViewById(R.id.racePanel);
         raceKicker = findViewById(R.id.raceKicker);
@@ -371,6 +398,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
+        if (cfg.stackedClock) stackClock();
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
@@ -431,7 +459,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames));
+        if (dockRow) {
+            grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockBandColor));
+            // Room for the band beside its outer tiles: it can only draw inside the grid, and the focused outer tile
+            // touched its edge. Set before the first layout, so the first tiles are already the right size.
+            int inset = Math.round(DockDecoration.BAND_INSET_DP * density);
+            grid.setPadding(inset, grid.getPaddingTop(), inset, grid.getPaddingBottom());
+        }
         if (animations) {
             int enterAnim = reducedMotion ? R.anim.tile_enter_reduced : R.anim.tile_enter;
             float enterDelay = reducedMotion ? 0f : 0.06f;
@@ -470,6 +504,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // Cold start or column count > 4: the first focus can run before the grid has its final width or
             // padding, leaving the glass at the XML design size until a key is pressed.
             grid.post(this::refitGlass);
+            grid.post(this::alignToBand);
         });
 
         // Keep the glass glued to its tile while the grid scrolls.
@@ -533,6 +568,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (cfg.wifiLabelWidth > 0) btnWifi.setMaxWidth(Math.round(cfg.wifiLabelWidth * density));
             else makeIconOnly(btnWifi);
             makeIconOnly((TextView) btnSettings);
+        }
+        topButtons = cfg.topButtons;
+        if (!topButtons) {
+            // The remote's Input and Settings keys do the job; Up from the dock then stays in the dock.
+            for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnLibraryTop, btnSettings}) {
+                button.setVisibility(View.GONE);
+            }
         }
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
@@ -670,6 +712,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             pillsShown = true;
         }
         if (showStats) startStats();
+        startWeather();
         sky.update();
         wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
@@ -793,6 +836,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArt.animate().cancel();
         handler.removeCallbacks(minuteTick);
         stopStats();
+        stopWeather();
         if (diya != null) diya.stop();
         cancelPendingFocusScroll();
         // Nothing of ours stays on screen over another app; an undecided prompt simply returns next time.
@@ -897,6 +941,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
                 || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
         boolean back = code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE;
+        if (ok && swallowOkRelease) {
+            if (!down) swallowOkRelease = false;
+            return true;   // the held OK that picked the tile up: its repeats and release are not a drop
+        }
         if (movingKey != null) {
             switch (code) {
                 case KeyEvent.KEYCODE_DPAD_LEFT:
@@ -1024,6 +1072,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         refocusAfterLayout(slot);
     }
 
+    @Override
+    public boolean onTileLongPressed(int position) {
+        if (!longPressReorder) return false;
+        // The tile's key, not its position: starting the mode can reload the tiles (empty dock slots go away).
+        String key = adapter.keyAt(position);
+        if (!reordering && !beginReorder()) return true;
+        int pos = adapter.positionOf(key);
+        if (pos < 0) return true;
+        focusTile(pos);
+        pickUp(pos);
+        swallowOkRelease = true;
+        Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
+        return true;
+    }
+
     private void pickUp(int pos) {
         if (pos >= adapter.movableCount()) return;   // the "Default home" tile stays put
         movingKey = adapter.keyAt(pos);
@@ -1056,6 +1119,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Ends the mode and saves the order if it changed since the mode started. */
     private void endReorder() {
         if (!reordering) return;
+        swallowOkRelease = false;
         dockEditing = false;
         dockEditSlot = -1;
         drop();
@@ -1571,6 +1635,214 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         else glass.setAlpha(0f);
     }
 
+    /**
+     * config.xml stacked_clock: the date on its own line above a larger clock, with no greeting and no divider,
+     * so the block matches the weather widget's height. The views are only moved, so everything else that updates
+     * them (the minute tick, the Shamsi date, a festival) keeps working.
+     */
+    private void stackClock() {
+        TextClock clock = findViewById(R.id.clock);
+        TextClock date = findViewById(R.id.date);
+        LinearLayout dateColumn = (LinearLayout) date.getParent();
+        LinearLayout row = (LinearLayout) dateColumn.getParent();
+        LinearLayout block = (LinearLayout) row.getParent();
+        greeting.setVisibility(View.GONE);
+        row.getChildAt(row.indexOfChild(dateColumn) - 1).setVisibility(View.GONE);   // the divider
+        row.removeView(dateColumn);
+        block.addView(dateColumn, block.indexOfChild(row),
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        dateColumn.setPadding(Math.round(3 * density), 0, 0, 0);
+        String pattern = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM");
+        date.setFormat12Hour(pattern);
+        date.setFormat24Hour(pattern);
+        date.setAllCaps(false);
+        date.setLetterSpacing(0.02f);
+        date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        date.setTextColor(0xD9FFFFFF);
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 72);
+        clock.setTypeface(getResources().getFont(R.font.outfit_medium));
+        clock.setLetterSpacing(-0.02f);
+    }
+
+    // ---- optional weather (config.xml weather) ----------------------------------------------------
+
+    /** The widget in the top-right corner; its views are found when the first forecast arrives. */
+    private View weatherWidget;
+    private boolean weatherOn;
+    private double weatherLat, weatherLon;
+    private String weatherPlace;
+    /** Background fetcher, like the stats reader: running only while Home is resumed and weather is on. */
+    private HandlerThread weatherThread;
+    private volatile Handler weatherBg;
+    /** When the last fetch arrived (elapsedRealtime, main thread); back on Home sooner than REFRESH_MS, it waits. */
+    private long weatherFetchedAt;
+
+    private void startWeather() {
+        if (!weatherOn || weatherThread != null) return;
+        weatherThread = new HandlerThread("weather");
+        weatherThread.start();
+        Handler bg = new Handler(weatherThread.getLooper());
+        weatherBg = bg;
+        long age = SystemClock.elapsedRealtime() - weatherFetchedAt;
+        long first = weatherFetchedAt == 0 || age >= Weather.REFRESH_MS ? 0 : Weather.REFRESH_MS - age;
+        bg.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (weatherBg != bg) return;
+                Weather.Forecast forecast = fetchWeather();
+                handler.post(() -> {
+                    if (weatherBg != bg || forecast == null) return;
+                    weatherFetchedAt = SystemClock.elapsedRealtime();
+                    showWeather(forecast);
+                });
+                // Offline or a bad reply: the last lines stay, and it asks again in five minutes.
+                if (weatherBg == bg) bg.postDelayed(this, forecast == null ? 5 * MINUTE_MS : Weather.REFRESH_MS);
+            }
+        }, first);
+    }
+
+    private void stopWeather() {
+        if (weatherThread == null) return;
+        weatherBg.removeCallbacksAndMessages(null);
+        weatherThread.quit();
+        weatherThread = null;
+        weatherBg = null;
+    }
+
+    /** One request to Open-Meteo; null when offline or the reply does not read. Runs off the main thread. */
+    private Weather.Forecast fetchWeather() {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(Weather.url(weatherLat, weatherLon)).openConnection();
+            connection.setConnectTimeout(10_000);
+            connection.setReadTimeout(10_000);
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
+            StringBuilder body = new StringBuilder();
+            try (BufferedReader in = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                char[] buffer = new char[4096];
+                int n;
+                while ((n = in.read(buffer)) > 0) {
+                    body.append(buffer, 0, n);
+                    if (body.length() > 256 * 1024) return null;   // a forecast is a few KB; anything else is not one
+                }
+            }
+            JSONObject reply = new JSONObject(body.toString());
+            JSONObject now = reply.getJSONObject("current");
+            JSONObject hourly = reply.getJSONObject("hourly");
+            JSONObject daily = reply.getJSONObject("daily");
+            JSONArray times = hourly.getJSONArray("time");
+            JSONArray temps = hourly.getJSONArray("temperature_2m");
+            JSONArray codes = hourly.getJSONArray("weather_code");
+            JSONArray days = hourly.getJSONArray("is_day");
+            String[] stamps = new String[times.length()];
+            for (int i = 0; i < stamps.length; i++) stamps[i] = times.getString(i);
+            int first = Math.max(0, Weather.firstHourAfter(stamps, now.getString("time")));
+            int count = Math.max(0, Math.min(Weather.HOURS, stamps.length - first));
+            Weather.Hour[] hours = new Weather.Hour[count];
+            for (int i = 0; i < count; i++) {
+                int k = first + i;
+                hours[i] = new Weather.Hour(Weather.hourLabel(stamps[k]), Weather.sky(codes.getInt(k)),
+                        days.optInt(k, 1) == 1, (int) Math.round(temps.getDouble(k)));
+            }
+            return new Weather.Forecast((int) Math.round(now.getDouble("temperature_2m")),
+                    Weather.sky(now.getInt("weather_code")), now.optInt("is_day", 1) == 1,
+                    (int) Math.round(daily.getJSONArray("temperature_2m_max").getDouble(0)),
+                    (int) Math.round(daily.getJSONArray("temperature_2m_min").getDouble(0)), hours);
+        } catch (IOException | JSONException | RuntimeException e) {
+            return null;
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    /** Fills the widget: "Recife / 28°" and "☀ / Partly cloudy / H:18° L:10°" on top, then the next hours. */
+    private void showWeather(Weather.Forecast f) {
+        TextView place = weatherWidget.findViewById(R.id.weatherPlace);
+        place.setText(weatherPlace);
+        place.setVisibility(weatherPlace.isEmpty() ? View.GONE : View.VISIBLE);
+        ((TextView) weatherWidget.findViewById(R.id.weatherTemp)).setText(Weather.degrees(f.temp));
+        ((TextView) weatherWidget.findViewById(R.id.weatherGlyph)).setText(Weather.glyph(f.sky, f.day));
+        ((TextView) weatherWidget.findViewById(R.id.weatherSky)).setText(skyName(f.sky));
+        ((TextView) weatherWidget.findViewById(R.id.weatherHighLow)).setText(
+                getString(R.string.weather_high_low, Weather.degrees(f.high), Weather.degrees(f.low)));
+        LinearLayout row = weatherWidget.findViewById(R.id.weatherHours);
+        row.removeAllViews();
+        // macOS spacing: the first hour lines up with the place, the last with the high and low, equal gaps between.
+        for (Weather.Hour hour : f.hours) {
+            if (row.getChildCount() > 0) row.addView(new Space(this), new LinearLayout.LayoutParams(0, 0, 1));
+            LinearLayout column = new LinearLayout(this);
+            column.setOrientation(LinearLayout.VERTICAL);
+            column.setGravity(Gravity.CENTER_HORIZONTAL);
+            column.addView(hourText(hour.label, 8.9f, 0xA6FFFFFF, R.font.outfit_medium));
+            column.addView(hourText(Weather.glyph(hour.sky, hour.day), 12.15f, 0xE6FFFFFF, 0));
+            column.addView(hourText(Weather.degrees(hour.temp), 10.5f, 0xFFFFFFFF, R.font.outfit_medium));
+            row.addView(column, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+        if (weatherWidget.getVisibility() != View.VISIBLE) {
+            weatherWidget.setVisibility(View.VISIBLE);
+            weatherWidget.post(this::alignToBand);
+        }
+    }
+
+    /**
+     * Lines the clock block's left edge and the weather widget's right edge up with the dock band's, so the three
+     * share one margin. The band's edge depends on the column count (tiles sit centred in their cells), so it is
+     * measured from the laid-out dock tiles rather than fixed; translation only, nothing is laid out again.
+     */
+    private void alignToBand() {
+        if (!dockRow || isDestroyed()) return;
+        int left = Integer.MAX_VALUE, right = Integer.MIN_VALUE;
+        Rect r = new Rect();
+        for (int pos = 0; pos < COLUMNS; pos++) {
+            RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
+            View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
+            if (card == null || card.getVisibility() != View.VISIBLE || card.getWidth() == 0) continue;
+            r.set(0, 0, card.getWidth(), card.getHeight());
+            grid.offsetDescendantRectToMyCoords(card, r);   // layout position: the focus zoom is ignored
+            left = Math.min(left, r.left);
+            right = Math.max(right, r.right);
+        }
+        if (left > right) return;
+        float side = DockDecoration.sideRoom(left, grid.getWidth() - right, density);
+        r.set(0, 0, grid.getWidth(), grid.getHeight());
+        root.offsetDescendantRectToMyCoords(grid, r);
+        float bandLeft = r.left + left - side, bandRight = r.left + right + side;
+        r.set(0, 0, clockBlock.getWidth(), clockBlock.getHeight());
+        root.offsetDescendantRectToMyCoords(clockBlock, r);
+        clockBlock.setTranslationX(bandLeft - r.left);
+        if (weatherWidget != null && weatherWidget.getWidth() > 0) {
+            weatherWidget.setTranslationX(bandRight - weatherWidget.getRight());
+        }
+    }
+
+    private TextView hourText(String text, float sp, int color, int font) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        view.setTextColor(color);
+        if (font != 0) view.setTypeface(getResources().getFont(font));
+        view.setGravity(Gravity.CENTER_HORIZONTAL);
+        view.setIncludeFontPadding(false);   // the font's own spare line space left a gap under the row
+        view.setSingleLine(true);
+        view.setPadding(0, Math.round(1.6f * density), 0, Math.round(1.6f * density));
+        return view;
+    }
+
+    private static int skyName(Weather.Sky sky) {
+        switch (sky) {
+            case CLEAR: return R.string.weather_clear;
+            case PARTLY: return R.string.weather_partly;
+            case FOG: return R.string.weather_fog;
+            case DRIZZLE: return R.string.weather_drizzle;
+            case RAIN: return R.string.weather_rain;
+            case SNOW: return R.string.weather_snow;
+            case STORM: return R.string.weather_storm;
+            default: return R.string.weather_cloudy;
+        }
+    }
+
     // ---- optional system stats (config.xml show_stats) --------------------------------------------
 
     /** Background reader. Started only while Home is resumed and show_stats is on. */
@@ -1772,7 +2044,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            if (position < COLUMNS) return !topButtons;    // dock row: let focus move to the top bar, if it has buttons
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
@@ -2090,6 +2362,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** config.xml icon_only_buttons. */
     private boolean iconOnlyButtons;
+    /** config.xml top_buttons: false hides the whole top bar of buttons. */
+    private boolean topButtons = true;
     /** icon_only_buttons without wifi_label_width: the Wi-Fi pill shows no network name. */
     private boolean wifiIconOnly;
     /** The app library button in the top bar (library_button). */
@@ -2194,7 +2468,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
         }
-        btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
+        btnInputs.setVisibility(any && topButtons ? View.VISIBLE : View.GONE);
     }
 
     /** The Live TV app's launch intent: its leanback entry point, or the configured action if it has none. */
