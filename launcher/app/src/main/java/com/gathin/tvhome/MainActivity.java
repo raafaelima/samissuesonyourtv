@@ -415,6 +415,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hiddenApps = new HashSet<>(cfg.hiddenApps);
 
         grid = findViewById(R.id.grid);
+        if (cfg.nowPlaying) {
+            // The grid is clipped at its wrapper's top edge, so apps scroll out of sight under the clock. Put that edge
+            // below the now playing card too (card 54dp, hanging 4dp up into the clock's box, plus 6dp), or apps would
+            // show beside it. The dock row is placed from the bottom, so it does not move.
+            ViewGroup.MarginLayoutParams wrapper = (ViewGroup.MarginLayoutParams) ((View) grid.getParent()).getLayoutParams();
+            wrapper.topMargin += Math.round(56 * density);
+        }
         rtlAppGrid = getResources().getBoolean(R.bool.rtl_app_grid);
         // Mirror only the app grid; the header and other locales keep their own layouts.
         grid.setLayoutManager(new GridLayoutManager(this, COLUMNS) {
