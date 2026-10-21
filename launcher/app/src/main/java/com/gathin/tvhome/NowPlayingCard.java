@@ -46,7 +46,7 @@ final class NowPlayingCard {
     private final Activity activity;
     private final View card;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final ImageView backdrop, cover, full;
+    private final ImageView backdrop, cover;
     private final TextView title, artist, elapsed, total;
     private final View progress, done, left;
     private final Runnable onShown;
@@ -73,7 +73,6 @@ final class NowPlayingCard {
         this.onShown = onShown;
         backdrop = card.findViewById(R.id.npBackdrop);
         cover = card.findViewById(R.id.npCover);
-        full = card.findViewById(R.id.npFull);
         title = card.findViewById(R.id.npTitle);
         artist = card.findViewById(R.id.npArtist);
         elapsed = card.findViewById(R.id.npElapsed);
@@ -95,9 +94,9 @@ final class NowPlayingCard {
                 outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
             }
         });
-        // Dark where the cover meets the blur, lighter towards the edge; the times on top stay readable.
-        card.findViewById(R.id.npFade).setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[] {0xCC000000, 0x66000000}));
+        // The cover behind everything, darkest under the text on the left and lighter towards the right.
+        card.findViewById(R.id.npScrim).setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] {0xE6000000, 0x73000000}));
         float cornerCover = 5 * density;
         cover.setClipToOutline(true);
         cover.setOutlineProvider(new ViewOutlineProvider() {
@@ -242,10 +241,10 @@ final class NowPlayingCard {
 
     private void setArt(Bitmap bitmap) {
         cover.setImageBitmap(bitmap);
-        full.setImageBitmap(bitmap);
         if (bitmap != null && !"saved".equals(shownArt)) saveCover(bitmap);
-        // Blur by shrinking to a few pixels and letting the view smooth them back up.
-        backdrop.setImageBitmap(bitmap == null ? null : Bitmap.createScaledBitmap(bitmap, 12, 12, true));
+        // A light blur: shrunk to 96 pixels wide, the view smooths it back up, and the cover stays recognisable.
+        backdrop.setImageBitmap(bitmap == null ? null : Bitmap.createScaledBitmap(bitmap, 96,
+                Math.max(1, 96 * bitmap.getHeight() / bitmap.getWidth()), true));
     }
 
     /** Keeps a small copy of the cover so the card can show it again after a restart. */
