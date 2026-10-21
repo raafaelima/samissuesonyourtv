@@ -242,7 +242,41 @@ final class NowPlayingCard {
     private void setArt(Bitmap bitmap) {
         cover.setImageBitmap(bitmap);
         if (bitmap != null && !"saved".equals(shownArt)) saveCover(bitmap);
-        backdrop.setImageBitmap(bitmap);   // the full image: shrinking it first made the background blocky
+        backdrop.setImageBitmap(bitmap == null ? null : blurred(bitmap));
+    }
+
+    /**
+     * A soft copy of the cover for the background: shrunk to 160 pixels, then box-blurred twice (about a Gaussian), so the
+     * view stretches smooth pixels, not blocks. 160x160 costs a few milliseconds.
+     */
+    private static Bitmap blurred(Bitmap src) {
+        int w = 160, h = Math.max(1, w * src.getHeight() / src.getWidth());
+        Bitmap small = Bitmap.createScaledBitmap(src, w, h, true);
+        int[] px = new int[w * h];
+        small.getPixels(px, 0, w, 0, 0, w, h);
+        for (int pass = 0; pass < 2; pass++) {
+            px = box(px, w, h, 5, true);
+            px = box(px, w, h, 5, false);
+        }
+        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888);
+    }
+
+    /** One box-blur pass along rows or columns, the window clamped at the edges. */
+    private static int[] box(int[] px, int w, int h, int r, boolean rows) {
+        int[] out = new int[px.length];
+        int length = rows ? w : h, lines = rows ? h : w;
+        for (int line = 0; line < lines; line++) {
+            for (int i = 0; i < length; i++) {
+                int a = 0, red = 0, green = 0, blue = 0, n = 0;
+                for (int k = Math.max(0, i - r); k <= Math.min(length - 1, i + r); k++) {
+                    int c = rows ? px[line * w + k] : px[k * w + line];
+                    a += c >>> 24; red += c >> 16 & 0xFF; green += c >> 8 & 0xFF; blue += c & 0xFF; n++;
+                }
+                int c = (a / n) << 24 | (red / n) << 16 | (green / n) << 8 | blue / n;
+                if (rows) out[line * w + i] = c; else out[i * w + line] = c;
+            }
+        }
+        return out;
     }
 
     /** Keeps a copy of the cover so the card can show it, as sharp as before, after a restart. */
