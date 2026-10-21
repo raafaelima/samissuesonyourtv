@@ -17,12 +17,12 @@ All of it is opt-in through settings, in `launcher/app/src/main/res/values/confi
 | Feature | Setting | What it does |
 |---|---|---|
 | Weather widget | `weather`, `weather_latitude`, `weather_longitude`, `weather_place` | A glass card in the top-right corner, in the style of the macOS widget: place, temperature, sky, today's high and low, and the next six hours. Data from [Open-Meteo](https://open-meteo.com) (free, no key, no account) |
-| Stacked clock | `stacked_clock` | The date on its own line above a larger clock, no greeting or divider, balanced with the weather widget |
+| Stacked clock | `stacked_clock` | The date on its own line above a large clock (88sp), no greeting or divider, balanced with the weather widget |
 | Now playing | `now_playing` | A short glass card under the clock with the cover (blurred behind it), song, artist and progress, and it stays after Spotify pauses or closes, showing the last song so one press gets back to it (kept across restarts of Home). It first appears when something plays. Press Up from the dock to focus it and OK to open Spotify. Needs notification access, see below |
 | Hold OK to reorder | `long_press_reorder` | Hold OK on an app to pick it up, move it with the arrows, OK or Back to drop it, Back again to finish. As on iOS |
 | No top bar | `top_buttons` | Hides the Inputs, network and Settings buttons, for remotes that have their own Input and Settings keys |
-| Translucent dock | `dock_band_color` | The dock band's colour and transparency (`#AARRGGBB`) |
-| One margin | (always on) | The clock, the weather widget and the dock band line up on the same edges, and the widget uses the dock's glass, corners and padding |
+| Dark glass | `dock_band_color` | The colour and transparency (`#AARRGGBB`) of the dock band, which the weather widget and the now playing card share. `themes/recife` sets a dark tint |
+| One margin | (always on) | The clock, the weather widget and the dock band line up on the same edges, and the weather widget and the now playing card use the dock's glass colour, with 7dp rounded-rectangle corners (the dock keeps its softer 26dp) |
 | Room for the highlight | (always on) | The dock's first and last apps keep space around their focus highlight, at any column count |
 
 Also fixed: `tools/theme.sh` left the remote's key services (YouTube, Input, Settings buttons) switched off after
