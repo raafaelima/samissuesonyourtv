@@ -219,23 +219,22 @@ final class NowPlayingCard {
 
     /** The cover: a bitmap Spotify hands over, else the one its address names. Redone only when the song changes. */
     private void art(MediaMetadata meta) {
+        // Spotify fills a song change in steps, and in between the only picture on offer is its own logo (the display
+        // icon). So the display icon is never used, and with no cover yet the old one stays until the new one arrives.
         Bitmap bitmap = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
         if (bitmap == null) bitmap = meta.getBitmap(MediaMetadata.METADATA_KEY_ART);
-        if (bitmap == null) bitmap = meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
-        String uri = first(meta, MediaMetadata.METADATA_KEY_ALBUM_ART_URI, MediaMetadata.METADATA_KEY_ART_URI,
-                MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI);
+        String uri = first(meta, MediaMetadata.METADATA_KEY_ALBUM_ART_URI, MediaMetadata.METADATA_KEY_ART_URI);
+        if (bitmap == null && uri.isEmpty()) return;
         String id = bitmap != null ? "b" + bitmap.getGenerationId() + bitmap.getWidth() : uri;
         if (id.equals(shownArt)) return;
         shownArt = id;
         if (bitmap != null) {
             setArt(bitmap);
-        } else if (!uri.isEmpty()) {
+        } else {
             new Thread(() -> {
                 Bitmap loaded = load(uri);
                 if (loaded != null) handler.post(() -> { if (id.equals(shownArt)) setArt(loaded); });
             }, "now-playing-art").start();
-        } else {
-            setArt(null);
         }
     }
 
