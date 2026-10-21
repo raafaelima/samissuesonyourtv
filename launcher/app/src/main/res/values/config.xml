@@ -121,7 +121,7 @@
     <!-- The date on its own line above a larger clock, with no greeting and no divider, so the clock block
          balances the weather widget. Can also be set with "stacked_clock": true in a theme's config.json. -->
     <bool name="stacked_clock">false</bool>
-    <!-- A card under the weather widget with the cover, song, artist and progress, which stays with the last song after Spotify
+    <!-- A card under the clock with the cover, song, artist and progress, which stays with the last song after Spotify
          pauses or closes; OK on it opens the app. Needs notification access for the launcher's NowPlayingListener (README). Can also be set with
          "now_playing": true in a theme's config.json. -->
     <bool name="now_playing">false</bool>

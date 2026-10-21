@@ -453,16 +453,14 @@
             android:orientation="horizontal" />
     </LinearLayout>
 
-    <!-- Now playing card under the weather widget (config.xml now_playing): the cover, the song, the artist and the progress,
+    <!-- Now playing card under the clock (config.xml now_playing): the cover, the song, the artist and the progress,
          only while Spotify plays. Floats over the Home column, so it moves nothing; NowPlayingCard fills it and
          MainActivity lines it up with the dock band. Pressing OK opens the app. Gone unless something plays. -->
     <FrameLayout
         android:id="@+id/nowPlaying"
         android:layout_width="243dp"
         android:layout_height="54dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="26dp"
-        android:layout_marginEnd="56dp"
+        android:layout_gravity="top|start"
         android:focusable="true"
         android:clickable="true"
         android:visibility="gone">

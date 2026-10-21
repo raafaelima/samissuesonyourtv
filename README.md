@@ -18,7 +18,7 @@ All of it is opt-in through settings, in `launcher/app/src/main/res/values/confi
 |---|---|---|
 | Weather widget | `weather`, `weather_latitude`, `weather_longitude`, `weather_place` | A glass card in the top-right corner, in the style of the macOS widget: place, temperature, sky, today's high and low, and the next six hours. Data from [Open-Meteo](https://open-meteo.com) (free, no key, no account) |
 | Stacked clock | `stacked_clock` | The date on its own line above a larger clock, no greeting or divider, balanced with the weather widget |
-| Now playing | `now_playing` | A short glass card under the weather widget with the cover (blurred behind it), song, artist and progress, and it stays after Spotify pauses or closes, showing the last song so one press gets back to it (kept across restarts of Home). It first appears when something plays. Press Up from the dock to focus it and OK to open Spotify. Needs notification access, see below |
+| Now playing | `now_playing` | A short glass card under the clock with the cover (blurred behind it), song, artist and progress, and it stays after Spotify pauses or closes, showing the last song so one press gets back to it (kept across restarts of Home). It first appears when something plays. Press Up from the dock to focus it and OK to open Spotify. Needs notification access, see below |
 | Hold OK to reorder | `long_press_reorder` | Hold OK on an app to pick it up, move it with the arrows, OK or Back to drop it, Back again to finish. As on iOS |
 | No top bar | `top_buttons` | Hides the Inputs, network and Settings buttons, for remotes that have their own Input and Settings keys |
 | Translucent dock | `dock_band_color` | The dock band's colour and transparency (`#AARRGGBB`) |
