@@ -242,17 +242,14 @@ final class NowPlayingCard {
     private void setArt(Bitmap bitmap) {
         cover.setImageBitmap(bitmap);
         if (bitmap != null && !"saved".equals(shownArt)) saveCover(bitmap);
-        // A light blur: shrunk to 96 pixels wide, the view smooths it back up, and the cover stays recognisable.
-        backdrop.setImageBitmap(bitmap == null ? null : Bitmap.createScaledBitmap(bitmap, 96,
-                Math.max(1, 96 * bitmap.getHeight() / bitmap.getWidth()), true));
+        backdrop.setImageBitmap(bitmap);   // the full image: shrinking it first made the background blocky
     }
 
-    /** Keeps a small copy of the cover so the card can show it again after a restart. */
+    /** Keeps a copy of the cover so the card can show it, as sharp as before, after a restart. */
     private void saveCover(Bitmap bitmap) {
-        Bitmap small = Bitmap.createScaledBitmap(bitmap, 160, 160, true);
         new Thread(() -> {
             try (FileOutputStream out = new FileOutputStream(new File(activity.getFilesDir(), COVER_FILE))) {
-                small.compress(Bitmap.CompressFormat.JPEG, 85, out);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out);
             } catch (IOException ignored) {
             }
         }, "now-playing-cover").start();
