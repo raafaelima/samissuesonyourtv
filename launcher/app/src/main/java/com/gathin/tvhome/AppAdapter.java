@@ -59,9 +59,6 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         /** Hold OK on a tile: the activity shows the tile menu (move, remove from Home, app info). */
         void onTileLongPress(int position, View card);
         void onLibraryUp();
-
-        /** Hold OK on a tile. Return true when handled; false opens the app's info page as before. */
-        boolean onTileLongPressed(int position);
     }
 
     static final class Entry {
@@ -450,9 +447,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         h.card.setOnClickListener(v -> launch(e));
         h.card.setOnLongClickListener(v -> {
-            int pos = h.getBindingAdapterPosition();
-            if (pos != RecyclerView.NO_POSITION && listener.onTileLongPressed(pos)) return true;
             if (tileMenu) {
+                int pos = h.getBindingAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION) listener.onTileLongPress(pos, v);
                 return true;
             }

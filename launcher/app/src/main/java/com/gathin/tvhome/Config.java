@@ -157,8 +157,6 @@ final class Config {
     final boolean appGlow;
     /** Minutes Home may sit untouched before the clock screensaver (config.xml, home_idle_clock_minutes); 0 is off. */
     final int homeIdleClockMinutes;
-    /** The dock band's colour with its alpha (theme config.json, dock_band_color); 0 keeps the built-in one. */
-    final int dockBandColor;
     /** The top bar's buttons (config.xml, top_buttons); false leaves the remote's own keys for Inputs and Settings. */
     final boolean topButtons;
     /** Weather lines under the clock (config.xml weather); on only with a place's coordinates. */
@@ -198,7 +196,7 @@ final class Config {
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, boolean appGlow, int homeIdleClockMinutes,
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
                    boolean handleViewInputs, boolean tileMenu,
-                   int dockBandColor, boolean topButtons, boolean weather, double weatherLatitude,
+                   boolean topButtons, boolean weather, double weatherLatitude,
                    double weatherLongitude, String weatherPlace,
                    boolean longPressReorder, boolean stackedClock, boolean nowPlaying) {
         this.handleViewInputs = handleViewInputs;
@@ -267,7 +265,6 @@ final class Config {
         this.ambientGlow = ambientGlow;
         this.appGlow = appGlow;
         this.homeIdleClockMinutes = homeIdleClockMinutes;
-        this.dockBandColor = dockBandColor;
         this.topButtons = topButtons;
         this.weatherLatitude = weatherLatitude;
         this.weatherLongitude = weatherLongitude;
@@ -349,7 +346,6 @@ final class Config {
         boolean ambientGlow = res.getBoolean(R.bool.ambient_glow);
         boolean appGlow = res.getBoolean(R.bool.app_glow);
         int idleClockMinutes = res.getInteger(R.integer.home_idle_clock_minutes);
-        int bandColor = 0;
         boolean topButtons = res.getBoolean(R.bool.top_buttons);
         boolean weather = res.getBoolean(R.bool.weather);
         String weatherLat = res.getString(R.string.weather_latitude);
@@ -425,7 +421,6 @@ final class Config {
             ambientGlow = bool(json, "ambient_glow", ambientGlow);
             appGlow = bool(json, "app_glow", appGlow);
             idleClockMinutes = integer(json, "home_idle_clock_minutes", idleClockMinutes, 0, 1440);
-            bandColor = translucentColor(json, "dock_band_color", bandColor);
             topButtons = bool(json, "top_buttons", topButtons);
             weather = bool(json, "weather", weather);
             weatherLat = string(json, "weather_latitude", weatherLat);
@@ -490,6 +485,10 @@ final class Config {
         Festival festival = json == null ? Festival.NONE : Festival.parse(string(json, "festival", ""),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
 
+        // top_buttons false: every button of the top bar goes, so their own switches go off; MainActivity hides Settings.
+        if (!topButtons) reorderButton = showNetworkPill = showInputsPill = libraryButton = false;
+        if (longPressReorder) tileMenu = true;   // hold OK reaches MainActivity's tile menu, which goes straight to Move
+
         return new Config(dock, fillDock, hidden, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
                 packageMap(appBanners), panelService,
                 panelAction, panelExtra, coocaaSources, inputAction, inputUriScheme,
@@ -499,7 +498,7 @@ final class Config {
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied,
                 festival, inputKeycodes, appKeys, stockHomeRedirect, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow,
                 Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, tileMenu,
-                bandColor, topButtons, weather, Weather.coordinate(weatherLat, 90),
+                topButtons, weather, Weather.coordinate(weatherLat, 90),
                 Weather.coordinate(weatherLon, 180), weatherPlace.trim(), longPressReorder,
                 stackedClock, nowPlaying);
     }
@@ -638,17 +637,6 @@ final class Config {
         try {
             int c = Color.parseColor(((String) v).trim());
             return c | 0xFF000000;   // always opaque: the window behind is black anyway
-        } catch (IllegalArgumentException e) {
-            return fallback;
-        }
-    }
-
-    /** Like color, but keeps the alpha of a #AARRGGBB value: the band can let the glow show through. */
-    private static int translucentColor(JSONObject o, String key, int fallback) {
-        Object v = o.opt(key);
-        if (!(v instanceof String)) return fallback;
-        try {
-            return Color.parseColor(((String) v).trim());
         } catch (IllegalArgumentException e) {
             return fallback;
         }

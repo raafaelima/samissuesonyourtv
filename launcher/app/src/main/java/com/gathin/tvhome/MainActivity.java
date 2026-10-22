@@ -439,13 +439,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherWidget = findViewById(R.id.weatherWidget);
         // The widget's glass is the dock band's: its colour (dock_band_color), edge line and corners.
         GradientDrawable panel = new GradientDrawable();
-        panel.setColor(cfg.dockBandColor != 0 ? cfg.dockBandColor : DockDecoration.BAND_COLOR);
+        panel.setColor(DockDecoration.bandColor(cfg.dockOpacity));
         panel.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);
         panel.setCornerRadius(DockDecoration.CARD_RADIUS_DP * density);
         weatherWidget.setBackground(panel);
         if (cfg.nowPlaying) {
             nowPlaying = new NowPlayingCard(this, findViewById(R.id.nowPlaying), density,
-                    cfg.dockBandColor != 0 ? cfg.dockBandColor : DockDecoration.BAND_COLOR, this::alignToBand);
+                    DockDecoration.bandColor(cfg.dockOpacity), this::alignToBand);
             // Down returns to the dock tile Up came from; the other arrows stay on the card.
             findViewById(R.id.nowPlaying).setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -541,7 +541,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         if (dockRow) {
-            grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockBandColor));
+            grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass));
             // Room for the band beside its outer tiles: it can only draw inside the grid, and the focused outer tile
             // touched its edge. Set before the first layout, so the first tiles are already the right size.
             int inset = Math.round(DockDecoration.BAND_INSET_DP * density);
@@ -682,9 +682,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         topButtons = cfg.topButtons;
         if (!topButtons) {
             // The remote's Input and Settings keys do the job; Up from the dock then stays in the dock.
-            for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnLibraryTop, btnSettings}) {
-                button.setVisibility(View.GONE);
-            }
+            btnSettings.setVisibility(View.GONE);   // Config already turned the other buttons off
         }
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
@@ -1326,21 +1324,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         endReorder();
         refocusAfterLayout(slot);
-    }
-
-    @Override
-    public boolean onTileLongPressed(int position) {
-        if (!longPressReorder) return false;
-        // The tile's key, not its position: starting the mode can reload the tiles (empty dock slots go away).
-        String key = adapter.keyAt(position);
-        if (!reordering && !beginReorder()) return true;
-        int pos = adapter.positionOf(key);
-        if (pos < 0) return true;
-        focusTile(pos);
-        pickUp(pos);
-        swallowOkRelease = true;
-        Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
-        return true;
     }
 
     private void pickUp(int pos) {
@@ -2783,7 +2766,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
         }
-        btnInputs.setVisibility(any && topButtons ? View.VISIBLE : View.GONE);
+        btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
     }
 
     /** boot_to_live_tv: the first time Home comes up after the TV starts, open the Live TV app instead. Once per
@@ -3188,6 +3171,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String pkg = adapter.packageAt(position);
         // Empty dock slots and the Default-home tile carry the launcher's own package: no menu for them.
         if (key == null || pkg == null || pkg.equals(getPackageName())) return;
+        if (longPressReorder) {
+            // long_press_reorder: straight to Move, no menu; the release of this hold must not drop the tile.
+            if (position < adapter.movableCount()) swallowOkRelease = moveTile(key);
+            return;
+        }
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
@@ -3196,14 +3184,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             addSettingsMenuRow(rows, popup, inDock ? R.string.tile_replace_in_dock : R.string.tile_add_to_dock,
                     () -> startDockEditFor(key, inDock));
         }
-        if (position < adapter.movableCount()) addSettingsMenuRow(rows, popup, R.string.tile_move, () -> {
-            if (!beginReorder()) return;
-            int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
-            if (at < 0) return;
-            focusTile(at);
-            pickUp(at);
-            Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
-        });
+        if (position < adapter.movableCount()) addSettingsMenuRow(rows, popup, R.string.tile_move, () -> moveTile(key));
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
@@ -3228,6 +3209,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         }
         rows.getChildAt(0).requestFocus();
+    }
+
+    /** Move: reorder mode with this tile already picked up. False when there was nothing to pick up. */
+    private boolean moveTile(String key) {
+        if (!beginReorder()) return false;
+        int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
+        if (at < 0) return false;
+        focusTile(at);
+        pickUp(at);
+        Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
+        return true;
     }
 
     private void addSettingsMenuRow(LinearLayout rows, PopupWindow popup, int title, Runnable action) {

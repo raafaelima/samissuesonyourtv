@@ -25,8 +25,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     static final float BAND_RADIUS_DP = 26;
     /** The corners of the weather widget and the now playing card: a rounded rectangle, not the band's pill. */
     static final float CARD_RADIUS_DP = 7;
-    /** The band's colour unless a theme sets dock_band_color, and its edge line. */
-    static final int BAND_COLOR = 0xFF141416;
+    /** The band's edge line; the weather widget and the now playing card share it. */
     static final int EDGE_COLOR = 0x1FFFFFFF;
 
     private final int dockSize;
@@ -46,19 +45,22 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
      * @param names       the dock tiles show their names, so the band reaches down over them.
      * @param opacity     the plain band's opacity in percent (dock_opacity), so a wallpaper can show through it.
-     * @param bandColor   the theme's dock_band_color, alpha included; 0 keeps the built-in colour.
      * @param lightGlass  a light frosted band like the pills, for a sky or wallpaper behind it.
      */
-    DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass,
-                   int bandColor) {
+    DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass) {
         this.dockSize = dockSize;
         this.density = density;
         this.namesRoom = names ? 22 * density : 0;
         this.lightGlass = lightGlass;
-        band.setColor(bandColor != 0 ? bandColor : translucent ? 0x8C121014 : (Math.round(opacity * 2.55f) << 24) | 0x141416);
+        band.setColor(translucent ? 0x8C121014 : bandColor(opacity));
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
         edge.setColor(lightGlass ? 0x38FFFFFF : translucent ? 0x26FFFFFF : 0x1FFFFFFF);
+    }
+
+    /** The plain band's colour at dock_opacity percent; the weather widget and the now playing card share it. */
+    static int bandColor(int opacity) {
+        return (Math.round(opacity * 2.55f) << 24) | 0x141416;
     }
 
     /**

@@ -21,7 +21,7 @@ All of it is opt-in through settings, in `launcher/app/src/main/res/values/confi
 | Now playing | `now_playing` | A short glass card under the clock with the cover (blurred behind it), song, artist and progress, and it stays after Spotify pauses or closes, showing the last song so one press gets back to it (kept across restarts of Home). It first appears when something plays. Press Up from the dock to focus it and OK to open Spotify. Needs notification access, see below |
 | Hold OK to reorder | `long_press_reorder` | Hold OK on an app to pick it up, move it with the arrows, OK or Back to drop it, Back again to finish. As on iOS |
 | No top bar | `top_buttons` | Hides the Inputs, network and Settings buttons, for remotes that have their own Input and Settings keys |
-| Dark glass | `dock_band_color` | The colour and transparency (`#AARRGGBB`) of the dock band, which the weather widget and the now playing card share. `themes/recife` sets a dark tint |
+| Dark glass | `dock_opacity` (upstream) | The weather widget and the now playing card share the dock band's colour and upstream's `dock_opacity`. `themes/recife` sets 65 |
 | One margin | (always on) | The clock, the weather widget and the dock band line up on the same edges, and the weather widget and the now playing card use the dock's glass colour, with 7dp rounded-rectangle corners (the dock keeps its softer 26dp) |
 | Room for the highlight | (always on) | The dock's first and last apps keep space around their focus highlight, at any column count |
 
