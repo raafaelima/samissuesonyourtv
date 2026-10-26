@@ -19,13 +19,13 @@ import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -40,7 +40,7 @@ final class NowPlayingCard {
 
     /** The TV app and the phone app; anything else playing is not Spotify's business. */
     private static final List<String> PACKAGES = Arrays.asList("com.spotify.tv.android", "com.spotify.music");
-    private static final long TICK_MS = 500;
+    private static final long TICK_MS = 1000;
     private static final String PREFS = "now_playing", COVER_FILE = "now_playing_cover.jpg";
 
     private final Activity activity;
@@ -48,23 +48,35 @@ final class NowPlayingCard {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ImageView backdrop, cover;
     private final TextView title, artist, elapsed, total;
-    private final View progress, done, left;
+    private final View progress, done;
     private final Runnable onShown;
     private final GradientDrawable edge = new GradientDrawable();
 
     private MediaSessionManager manager;
     private ComponentName listener;
     private MediaController controller;
+    /** The controller's last state and song, from its callbacks: each getter is a call into Spotify that copies the cover. */
+    private PlaybackState state;
+    private MediaMetadata meta;
     private String shownArt = "";   // identifies the cover on screen, so the same song is not decoded again
     private String pkg = "";        // the app the song on the card came from
     private long duration, position;
 
     private final MediaSessionManager.OnActiveSessionsChangedListener onSessions = this::follow;
     private final MediaController.Callback callback = new MediaController.Callback() {
-        @Override public void onMetadataChanged(MediaMetadata metadata) { update(); }
-        @Override public void onPlaybackStateChanged(PlaybackState state) { update(); }
+        @Override public void onMetadataChanged(MediaMetadata metadata) { meta = metadata; update(); }
+        @Override public void onPlaybackStateChanged(PlaybackState playback) { state = playback; update(); }
     };
-    private final Runnable tick = this::update;
+    /** While playing: only the clock and the bar move, worked out from the last state, with no call into Spotify. */
+    private final Runnable tick = new Runnable() {
+        @Override public void run() {
+            if (state == null) return;
+            position = NowPlaying.position(state.getPosition(), state.getLastPositionUpdateTime(),
+                    state.getPlaybackSpeed(), SystemClock.elapsedRealtime(), duration);
+            showProgress();
+            handler.postDelayed(this, TICK_MS);
+        }
+    };
 
     /** @param onShown runs once the card turns visible, so the activity can line it up with the dock band. */
     NowPlayingCard(Activity activity, View card, float density, int glassColor, Runnable onShown) {
@@ -79,7 +91,7 @@ final class NowPlayingCard {
         total = card.findViewById(R.id.npTotal);
         progress = card.findViewById(R.id.npProgress);
         done = card.findViewById(R.id.npDone);
-        left = card.findViewById(R.id.npLeft);
+        done.setPivotX(0);   // the bar grows by scale from its start, so a tick never lays the screen out again
 
         // The weather widget's glass: the same corners and edge line, with the cover blurred inside it.
         float radius = DockDecoration.CARD_RADIUS_DP * density;
@@ -131,6 +143,8 @@ final class NowPlayingCard {
         if (manager != null) manager.removeOnActiveSessionsChangedListener(onSessions);
         if (controller != null) controller.unregisterCallback(callback);
         controller = null;
+        state = null;
+        meta = null;
         save();
     }
 
@@ -147,16 +161,18 @@ final class NowPlayingCard {
             found.registerCallback(callback, handler);
         }
         controller = found;
+        state = found == null ? null : found.getPlaybackState();
+        meta = found == null ? null : found.getMetadata();
         update();
     }
 
     /** Shows the live song while Spotify plays or is paused; with no session the last song stays as it was. */
     private void update() {
         handler.removeCallbacks(tick);
-        PlaybackState state = controller == null ? null : controller.getPlaybackState();
-        MediaMetadata meta = controller == null ? null : controller.getMetadata();
-        boolean playing = state != null && state.getState() == PlaybackState.STATE_PLAYING;
-        if (meta == null || !(playing || state.getState() == PlaybackState.STATE_PAUSED)) return;
+        // Spotify can name the song before it reports a state; nothing is shown until it has both.
+        if (controller == null || meta == null || state == null) return;
+        boolean playing = state.getState() == PlaybackState.STATE_PLAYING;
+        if (!playing && state.getState() != PlaybackState.STATE_PAUSED) return;
         pkg = controller.getPackageName();
         title.setText(first(meta, MediaMetadata.METADATA_KEY_TITLE, MediaMetadata.METADATA_KEY_DISPLAY_TITLE));
         artist.setText(first(meta, MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_ALBUM_ARTIST,
@@ -167,23 +183,24 @@ final class NowPlayingCard {
         art(meta);
         show();
         if (!playing) save();   // a pause is where the song is left; the position is saved with it
-        else handler.postDelayed(tick, TICK_MS);
+        else handler.postDelayed(tick, TICK_MS - position % TICK_MS);   // ticks on the song's own seconds
     }
 
     /** Puts title, artist, times and bar on the card from the fields, and makes the card visible. */
     private void show() {
         card.setContentDescription(title.getText() + ", " + artist.getText());
         progress.setVisibility(duration > 0 ? View.VISIBLE : View.INVISIBLE);
-        elapsed.setText(NowPlaying.time(position));
         total.setText(NowPlaying.time(duration));
-        float f = NowPlaying.fraction(position, duration);
-        ((LinearLayout.LayoutParams) done.getLayoutParams()).weight = f;
-        ((LinearLayout.LayoutParams) left.getLayoutParams()).weight = 1f - f;
-        card.findViewById(R.id.npBar).requestLayout();
+        showProgress();
         if (card.getVisibility() != View.VISIBLE) {
             card.setVisibility(View.VISIBLE);
             card.post(onShown);
         }
+    }
+
+    private void showProgress() {
+        elapsed.setText(NowPlaying.time(position));
+        done.setScaleX(NowPlaying.fraction(position, duration));
     }
 
     private void save() {
@@ -278,21 +295,38 @@ final class NowPlayingCard {
         return out;
     }
 
-    /** Keeps a copy of the cover so the card can show it, as sharp as before, after a restart. */
+    /**
+     * Keeps a copy of the cover so the card can show it, as sharp as before, after a restart. Written to its own
+     * temporary file and renamed into place, so two quick song changes never leave half of each in the file.
+     */
     private void saveCover(Bitmap bitmap) {
         new Thread(() -> {
-            try (FileOutputStream out = new FileOutputStream(new File(activity.getFilesDir(), COVER_FILE))) {
+            File dir = activity.getFilesDir();
+            File tmp = new File(dir, COVER_FILE + "." + Thread.currentThread().getId());
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out);
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                tmp.delete();
+                return;
             }
+            if (!tmp.renameTo(new File(dir, COVER_FILE))) tmp.delete();
         }, "now-playing-cover").start();
     }
 
     private Bitmap load(String address) {
         try {
             Uri uri = Uri.parse(address);
-            try (InputStream in = "https".equals(uri.getScheme()) ? new URL(address).openStream()
-                    : activity.getContentResolver().openInputStream(uri)) {
+            if ("https".equals(uri.getScheme())) {
+                HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
+                connection.setConnectTimeout(10_000);   // as the weather's: a stalled network never holds the thread
+                connection.setReadTimeout(10_000);
+                try (InputStream in = connection.getInputStream()) {
+                    return BitmapFactory.decodeStream(in);
+                } finally {
+                    connection.disconnect();
+                }
+            }
+            try (InputStream in = activity.getContentResolver().openInputStream(uri)) {
                 return in == null ? null : BitmapFactory.decodeStream(in);
             }
         } catch (Exception e) {

@@ -7,8 +7,9 @@
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
-    <!-- Only for the opt-in weather (config.xml weather): one HTTPS request to Open-Meteo every 30 minutes
-         while Home is on screen. With weather off the launcher opens no connection. -->
+    <!-- Only for the opt-in weather (config.xml weather): an HTTPS request to Open-Meteo each new hour and at
+         most every 30 minutes while Home is on screen, and the now playing cover when Spotify names it by https
+         address. With both off the launcher opens no connection. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

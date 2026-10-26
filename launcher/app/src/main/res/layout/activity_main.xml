@@ -554,25 +554,22 @@
                         android:textColor="#D9FFFFFF"
                         android:textSize="7.5sp"
                         android:fontFamily="@font/outfit_medium" />
-                    <LinearLayout
+                    <FrameLayout
                         android:id="@+id/npBar"
                         android:layout_width="0dp"
                         android:layout_height="2.5dp"
                         android:layout_weight="1"
                         android:layout_marginStart="5dp"
                         android:layout_marginEnd="5dp"
-                        android:orientation="horizontal">
+                        android:background="#40FFFFFF">
+                        <!-- NowPlayingCard scales it from its start to the song's position. -->
                         <View
                             android:id="@+id/npDone"
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="match_parent"
+                            android:scaleX="0"
                             android:background="#FFFFFFFF" />
-                        <View
-                            android:id="@+id/npLeft"
-                            android:layout_width="0dp"
-                            android:layout_height="match_parent"
-                            android:background="#40FFFFFF" />
-                    </LinearLayout>
+                    </FrameLayout>
                     <TextView
                         android:id="@+id/npTotal"
                         android:layout_width="wrap_content"

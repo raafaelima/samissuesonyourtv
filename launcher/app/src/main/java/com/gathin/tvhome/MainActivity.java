@@ -512,7 +512,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         panel.setStroke(Math.max(1, Math.round(density)), DockDecoration.EDGE_COLOR);
         panel.setCornerRadius(DockDecoration.CARD_RADIUS_DP * density);
         weatherWidget.setBackground(panel);
-        if (cfg.nowPlaying) {
+        if (cfg.nowPlaying && findViewById(R.id.nowPlaying) != null) {   // layout-iw has no card
             nowPlaying = new NowPlayingCard(this, findViewById(R.id.nowPlaying), density,
                     DockDecoration.bandColor(cfg.dockOpacity), this::alignToBand);
             // Down returns to the dock tile Up came from; the other arrows stay on the card.
@@ -555,7 +555,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hiddenApps = new HashSet<>(cfg.hiddenApps);
 
         grid = findViewById(R.id.grid);
-        if (cfg.nowPlaying) {
+        if (nowPlaying != null) {
             // The grid is clipped at its wrapper's top edge, so apps scroll out of sight under the clock. Put that edge
             // below the now playing card too (card 54dp, hanging 4dp up into the clock's box, plus 6dp), or apps would
             // show beside it. The dock row is placed from the bottom, so it does not move.
@@ -2151,7 +2151,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Background fetcher, like the stats reader: running only while Home is resumed and weather is on. */
     private HandlerThread weatherThread;
     private volatile Handler weatherBg;
-    /** When the last fetch arrived (elapsedRealtime, main thread); back on Home sooner than REFRESH_MS, it waits. */
+    /** When the last answer arrived and the last request went out (System.currentTimeMillis, 0 for never); see Weather.due. */
     private volatile long weatherFetchedAt, weatherTriedAt;
 
     private void startWeather() {
@@ -2556,7 +2556,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) {
                 View card = findViewById(R.id.nowPlaying);
-                if (!topButtons && card.getVisibility() == View.VISIBLE) {   // the now playing card, when it is up
+                if (!topButtons && nowPlaying != null && card.getVisibility() == View.VISIBLE) {   // the now playing card, when it is up
                     hideGlass();
                     hideHero();
                     card.requestFocus();
