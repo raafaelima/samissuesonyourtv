@@ -527,6 +527,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherLat = cfg.weatherLatitude;
         weatherLon = cfg.weatherLongitude;
         weatherPlace = cfg.weatherPlace;
+        if (weatherOn) showSavedWeather();
         raceCalendar = cfg.raceCalendar;
         racePanel = findViewById(R.id.racePanel);
         raceKicker = findViewById(R.id.raceKicker);
@@ -2166,14 +2167,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (weatherBg != bg) return;
                 long now = System.currentTimeMillis();
                 if (Weather.due(now, weatherFetchedAt, weatherTriedAt, java.util.TimeZone.getDefault())) {
-                    weatherTriedAt = now;
-                    Weather.Forecast forecast = fetchWeather();
-                    // Offline or a bad reply: the last lines stay, and Weather.due asks again after RETRY_MS.
-                    if (forecast != null) handler.post(() -> {
-                        if (weatherBg != bg) return;
+                    String body = fetchWeather();
+                    Weather.Forecast forecast = body == null ? null : parseWeather(body);
+                    if (forecast == null) {
+                        weatherTriedAt = now;   // offline or a bad reply: the last lines stay, and it asks again after RETRY_MS
+                    } else {
+                        // Kept even if Home paused meanwhile, and saved, so a new Home shows it at once instead of an empty corner.
                         weatherFetchedAt = now;
-                        showWeather(forecast);
-                    });
+                        getSharedPreferences(WEATHER_PREFS, MODE_PRIVATE).edit().putString("url", weatherUrl())
+                                .putString("body", body).putLong("at", now).apply();
+                        handler.post(() -> { if (!isDestroyed()) showWeather(forecast); });
+                    }
                 }
                 if (weatherBg == bg) bg.postDelayed(this, MINUTE_MS);
             }
@@ -2188,11 +2192,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherBg = null;
     }
 
-    /** One request to Open-Meteo; null when offline or the reply does not read. Runs off the main thread. */
-    private Weather.Forecast fetchWeather() {
+    private static final String WEATHER_PREFS = "weather";
+
+    private String weatherUrl() {
+        return Weather.url(weatherLat, weatherLon);
+    }
+
+    /** The last answer for this place, from before Home was recreated or its process was closed; Weather.due refreshes it. */
+    private void showSavedWeather() {
+        SharedPreferences prefs = getSharedPreferences(WEATHER_PREFS, MODE_PRIVATE);
+        long at = prefs.getLong("at", 0);
+        if (!weatherUrl().equals(prefs.getString("url", "")) || Math.abs(System.currentTimeMillis() - at) > 6 * 3_600_000L) return;
+        Weather.Forecast saved = parseWeather(prefs.getString("body", ""));
+        if (saved == null) return;
+        weatherFetchedAt = at;
+        showWeather(saved);
+    }
+
+    /** One request to Open-Meteo: the reply's text, or null when offline or it is not a forecast. Runs off the main thread. */
+    private String fetchWeather() {
         HttpURLConnection connection = null;
         try {
-            connection = (HttpURLConnection) new URL(Weather.url(weatherLat, weatherLon)).openConnection();
+            connection = (HttpURLConnection) new URL(weatherUrl()).openConnection();
             connection.setConnectTimeout(10_000);
             connection.setReadTimeout(10_000);
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
@@ -2206,7 +2227,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (body.length() > 256 * 1024) return null;   // a forecast is a few KB; anything else is not one
                 }
             }
-            JSONObject reply = new JSONObject(body.toString());
+            return body.toString();
+        } catch (IOException | RuntimeException e) {
+            return null;
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    /** The forecast in Open-Meteo's reply; null when it does not read. */
+    private static Weather.Forecast parseWeather(String body) {
+        try {
+            JSONObject reply = new JSONObject(body);
             JSONObject now = reply.getJSONObject("current");
             JSONObject hourly = reply.getJSONObject("hourly");
             JSONObject daily = reply.getJSONObject("daily");
@@ -2228,10 +2260,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     Weather.sky(now.getInt("weather_code")), now.optInt("is_day", 1) == 1,
                     (int) Math.round(daily.getJSONArray("temperature_2m_max").getDouble(0)),
                     (int) Math.round(daily.getJSONArray("temperature_2m_min").getDouble(0)), hours);
-        } catch (IOException | JSONException | RuntimeException e) {
+        } catch (JSONException | RuntimeException e) {
             return null;
-        } finally {
-            if (connection != null) connection.disconnect();
         }
     }
 

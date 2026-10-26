@@ -12,8 +12,8 @@ final class Weather {
 
     /** How often Home asks again while it stays on screen. */
     static final long REFRESH_MS = 30 * 60_000L;
-    /** After a failed request (offline, a bad reply), how long until it tries again. */
-    static final long RETRY_MS = 5 * 60_000L;
+    /** After a failed request (offline, a bad reply, a network not up yet after standby), how long until it tries again. */
+    static final long RETRY_MS = 60_000L;
 
     /**
      * Whether to ask now, checked once a minute on the wall clock (Handler delays stop while the TV sleeps): never

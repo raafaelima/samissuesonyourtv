@@ -82,8 +82,8 @@ public class WeatherTest {
         assertTrue(Weather.due(t1105 + 55 * m, t1105 + 50 * m, t1105 + 50 * m, lisbon));   // 12:00, the hours row moves
         assertTrue(Weather.due(t1105 + 30 * m, t1105, t1105, lisbon));        // 11:35, REFRESH_MS
         assertTrue(Weather.due(t1105 - m, t1105, t1105, lisbon));             // clock set back
-        assertFalse(Weather.due(t1105 + 2 * m, 0, t1105, lisbon));            // failed 2 minutes ago
-        assertTrue(Weather.due(t1105 + 5 * m, 0, t1105, lisbon));             // and retries after 5
-        assertFalse(Weather.due(t1105 + h + 2 * m, t1105, t1105 + h, lisbon));   // old answer, fresh failure
+        assertFalse(Weather.due(t1105 + 30_000L, 0, t1105, lisbon));          // failed half a minute ago
+        assertTrue(Weather.due(t1105 + m, 0, t1105, lisbon));                 // and retries after a minute
+        assertFalse(Weather.due(t1105 + h + 30_000L, t1105, t1105 + h, lisbon));   // old answer, fresh failure
     }
 }
