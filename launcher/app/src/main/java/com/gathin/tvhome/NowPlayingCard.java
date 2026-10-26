@@ -3,7 +3,6 @@ package com.gathin.tvhome;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Outline;
@@ -21,9 +20,6 @@ import android.view.ViewOutlineProvider;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -31,17 +27,16 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * config.xml now_playing: fills the card under the clock from Spotify's media session. Once a song has played the card
- * stays, paused or with Spotify closed, showing the last song so one press gets back to it; the song is kept across
- * restarts of Home. It never appears before something has played. Needs notification access for NowPlayingListener
- * (the README gives the one adb command). Nothing leaves the TV except the cover, when Spotify names it by https address.
+ * config.xml now_playing: fills the card under the clock from Spotify's media session, playing or paused, and hides it
+ * once the session ends (Spotify closed, the TV restarted). It only listens to a session Spotify already has; it never
+ * starts or wakes Spotify, and nothing is stored. Needs notification access for NowPlayingListener (the README gives
+ * the one adb command). Nothing leaves the TV except the cover, when Spotify names it by https address.
  */
 final class NowPlayingCard {
 
     /** The TV app and the phone app; anything else playing is not Spotify's business. */
     private static final List<String> PACKAGES = Arrays.asList("com.spotify.tv.android", "com.spotify.music");
     private static final long TICK_MS = 1000;
-    private static final String PREFS = "now_playing", COVER_FILE = "now_playing_cover.jpg";
 
     private final Activity activity;
     private final View card;
@@ -127,7 +122,6 @@ final class NowPlayingCard {
     }
 
     void start() {
-        restore();
         manager = (MediaSessionManager) activity.getSystemService(Context.MEDIA_SESSION_SERVICE);
         listener = new ComponentName(activity, NowPlayingListener.class);
         try {
@@ -145,7 +139,6 @@ final class NowPlayingCard {
         controller = null;
         state = null;
         meta = null;
-        save();
     }
 
     /** Follows Spotify's session, if there is one. */
@@ -166,13 +159,17 @@ final class NowPlayingCard {
         update();
     }
 
-    /** Shows the live song while Spotify plays or is paused; with no session the last song stays as it was. */
+    /** Shows the live song while Spotify plays or is paused, and hides the card once its session has ended. */
     private void update() {
         handler.removeCallbacks(tick);
-        // Spotify can name the song before it reports a state; nothing is shown until it has both.
-        if (controller == null || meta == null || state == null) return;
-        boolean playing = state.getState() == PlaybackState.STATE_PLAYING;
-        if (!playing && state.getState() != PlaybackState.STATE_PAUSED) return;
+        int s = state == null ? PlaybackState.STATE_NONE : state.getState();
+        if (controller == null || s == PlaybackState.STATE_STOPPED || s == PlaybackState.STATE_ERROR) {
+            hide();
+            return;
+        }
+        // Spotify can name the song before it reports a state, and buffers between songs: the card waits as it is.
+        boolean playing = s == PlaybackState.STATE_PLAYING;
+        if (meta == null || !(playing || s == PlaybackState.STATE_PAUSED)) return;
         pkg = controller.getPackageName();
         title.setText(first(meta, MediaMetadata.METADATA_KEY_TITLE, MediaMetadata.METADATA_KEY_DISPLAY_TITLE));
         artist.setText(first(meta, MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_ALBUM_ARTIST,
@@ -182,8 +179,7 @@ final class NowPlayingCard {
                 state.getPlaybackSpeed(), SystemClock.elapsedRealtime(), duration);
         art(meta);
         show();
-        if (!playing) save();   // a pause is where the song is left; the position is saved with it
-        else handler.postDelayed(tick, TICK_MS - position % TICK_MS);   // ticks on the song's own seconds
+        if (playing) handler.postDelayed(tick, TICK_MS - position % TICK_MS);   // ticks on the song's own seconds
     }
 
     /** Puts title, artist, times and bar on the card from the fields, and makes the card visible. */
@@ -198,32 +194,22 @@ final class NowPlayingCard {
         }
     }
 
+    private void hide() {
+        if (card.getVisibility() != View.VISIBLE) return;
+        if (card.hasFocus()) {   // focus goes back down to the dock rather than nowhere
+            View below = card.focusSearch(View.FOCUS_DOWN);
+            if (below != null) below.requestFocus();
+        }
+        card.setVisibility(View.GONE);
+        pkg = "";
+        shownArt = "";
+        cover.setImageBitmap(null);
+        backdrop.setImageBitmap(null);
+    }
+
     private void showProgress() {
         elapsed.setText(NowPlaying.time(position));
         done.setScaleX(NowPlaying.fraction(position, duration));
-    }
-
-    private void save() {
-        if (pkg.isEmpty() || title.getText().length() == 0) return;
-        activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("pkg", pkg)
-                .putString("title", title.getText().toString()).putString("artist", artist.getText().toString())
-                .putLong("duration", duration).putLong("position", position).apply();
-    }
-
-    /** The song from before: what was on the card when Home last stopped. */
-    private void restore() {
-        if (card.getVisibility() == View.VISIBLE) return;   // already showing something this run
-        SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        pkg = prefs.getString("pkg", "");
-        if (pkg.isEmpty()) return;
-        title.setText(prefs.getString("title", ""));
-        artist.setText(prefs.getString("artist", ""));
-        duration = prefs.getLong("duration", 0);
-        position = prefs.getLong("position", 0);
-        Bitmap saved = BitmapFactory.decodeFile(new File(activity.getFilesDir(), COVER_FILE).getPath());
-        shownArt = "saved";
-        setArt(saved);
-        show();
     }
 
     private static String first(MediaMetadata meta, String... keys) {
@@ -257,7 +243,6 @@ final class NowPlayingCard {
 
     private void setArt(Bitmap bitmap) {
         cover.setImageBitmap(bitmap);
-        if (bitmap != null && !"saved".equals(shownArt)) saveCover(bitmap);
         backdrop.setImageBitmap(bitmap == null ? null : blurred(bitmap));
     }
 
@@ -293,24 +278,6 @@ final class NowPlayingCard {
             }
         }
         return out;
-    }
-
-    /**
-     * Keeps a copy of the cover so the card can show it, as sharp as before, after a restart. Written to its own
-     * temporary file and renamed into place, so two quick song changes never leave half of each in the file.
-     */
-    private void saveCover(Bitmap bitmap) {
-        new Thread(() -> {
-            File dir = activity.getFilesDir();
-            File tmp = new File(dir, COVER_FILE + "." + Thread.currentThread().getId());
-            try (FileOutputStream out = new FileOutputStream(tmp)) {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out);
-            } catch (IOException e) {
-                tmp.delete();
-                return;
-            }
-            if (!tmp.renameTo(new File(dir, COVER_FILE))) tmp.delete();
-        }, "now-playing-cover").start();
     }
 
     private Bitmap load(String address) {
