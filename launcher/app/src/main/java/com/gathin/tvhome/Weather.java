@@ -12,6 +12,23 @@ final class Weather {
 
     /** How often Home asks again while it stays on screen. */
     static final long REFRESH_MS = 30 * 60_000L;
+    /** After a failed request (offline, a bad reply), how long until it tries again. */
+    static final long RETRY_MS = 5 * 60_000L;
+
+    /**
+     * Whether to ask now, checked once a minute on the wall clock (Handler delays stop while the TV sleeps): never
+     * answered, REFRESH_MS since the last answer, or a new hour began so the hours row moves on. A failure waits
+     * RETRY_MS. Times are System.currentTimeMillis(), 0 for never; a clock set back counts as due.
+     */
+    static boolean due(long now, long fetchedAt, long triedAt, java.util.TimeZone zone) {
+        if (triedAt > fetchedAt && now >= triedAt && now - triedAt < RETRY_MS) return false;
+        if (fetchedAt == 0 || now < fetchedAt || now - fetchedAt >= REFRESH_MS) return true;
+        return hour(now, zone) != hour(fetchedAt, zone);
+    }
+
+    private static long hour(long ms, java.util.TimeZone zone) {
+        return Math.floorDiv(ms + zone.getOffset(ms), 3_600_000L);
+    }
 
     /** The WMO weather codes Open-Meteo returns, folded into what the line can say. */
     enum Sky { CLEAR, PARTLY, CLOUDY, FOG, DRIZZLE, RAIN, SNOW, STORM }

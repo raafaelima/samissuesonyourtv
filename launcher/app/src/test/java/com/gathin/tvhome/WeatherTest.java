@@ -71,4 +71,19 @@ public class WeatherTest {
         assertTrue(Double.isNaN(Weather.coordinate("Lisbon", 90)));
         assertTrue(Double.isNaN(Weather.coordinate("91", 90)));
     }
+
+    @Test
+    public void asksOnANewHourAfterRefreshOrAfterAFailureHasWaited() {
+        java.util.TimeZone lisbon = java.util.TimeZone.getTimeZone("Europe/Lisbon");
+        long h = 3_600_000L, m = 60_000L;
+        long t1105 = 1_793_012_700_000L;   // 2026-10-26 11:05 in Lisbon (UTC+0)
+        assertTrue(Weather.due(t1105, 0, 0, lisbon));                          // never asked
+        assertFalse(Weather.due(t1105 + 20 * m, t1105, t1105, lisbon));       // 11:25, fresh
+        assertTrue(Weather.due(t1105 + 55 * m, t1105 + 50 * m, t1105 + 50 * m, lisbon));   // 12:00, the hours row moves
+        assertTrue(Weather.due(t1105 + 30 * m, t1105, t1105, lisbon));        // 11:35, REFRESH_MS
+        assertTrue(Weather.due(t1105 - m, t1105, t1105, lisbon));             // clock set back
+        assertFalse(Weather.due(t1105 + 2 * m, 0, t1105, lisbon));            // failed 2 minutes ago
+        assertTrue(Weather.due(t1105 + 5 * m, 0, t1105, lisbon));             // and retries after 5
+        assertFalse(Weather.due(t1105 + h + 2 * m, t1105, t1105 + h, lisbon));   // old answer, fresh failure
+    }
 }

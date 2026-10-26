@@ -2152,7 +2152,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private HandlerThread weatherThread;
     private volatile Handler weatherBg;
     /** When the last fetch arrived (elapsedRealtime, main thread); back on Home sooner than REFRESH_MS, it waits. */
-    private long weatherFetchedAt;
+    private volatile long weatherFetchedAt, weatherTriedAt;
 
     private void startWeather() {
         if (!weatherOn || weatherThread != null) return;
@@ -2160,22 +2160,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherThread.start();
         Handler bg = new Handler(weatherThread.getLooper());
         weatherBg = bg;
-        long age = SystemClock.elapsedRealtime() - weatherFetchedAt;
-        long first = weatherFetchedAt == 0 || age >= Weather.REFRESH_MS ? 0 : Weather.REFRESH_MS - age;
-        bg.postDelayed(new Runnable() {
+        bg.post(new Runnable() {
             @Override
             public void run() {
                 if (weatherBg != bg) return;
-                Weather.Forecast forecast = fetchWeather();
-                handler.post(() -> {
-                    if (weatherBg != bg || forecast == null) return;
-                    weatherFetchedAt = SystemClock.elapsedRealtime();
-                    showWeather(forecast);
-                });
-                // Offline or a bad reply: the last lines stay, and it asks again in five minutes.
-                if (weatherBg == bg) bg.postDelayed(this, forecast == null ? 5 * MINUTE_MS : Weather.REFRESH_MS);
+                long now = System.currentTimeMillis();
+                if (Weather.due(now, weatherFetchedAt, weatherTriedAt, java.util.TimeZone.getDefault())) {
+                    weatherTriedAt = now;
+                    Weather.Forecast forecast = fetchWeather();
+                    // Offline or a bad reply: the last lines stay, and Weather.due asks again after RETRY_MS.
+                    if (forecast != null) handler.post(() -> {
+                        if (weatherBg != bg) return;
+                        weatherFetchedAt = now;
+                        showWeather(forecast);
+                    });
+                }
+                if (weatherBg == bg) bg.postDelayed(this, MINUTE_MS);
             }
-        }, first);
+        });
     }
 
     private void stopWeather() {
